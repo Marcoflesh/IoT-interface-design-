@@ -3,3 +3,6 @@ esp32
 proyecto
 tests
 *.md
+api
+node_modules
+.env

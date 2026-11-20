@@ -1,10 +1,69 @@
+# Monitoreo de calidad del agua · entorno local
+#   web      → http://localhost:8080       (página + /api hacia la API)
+#   adminer  → http://localhost:8081       (ver la base de datos en el navegador)
+#   db       → localhost:3306              (MariaDB, solo desde esta computadora)
+# Antes de arrancar: copia .env.example a .env y cambia las contraseñas.
+
 services:
+  db:
+    image: mariadb:11.4
+    container_name: calidad-agua-db
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?Falta DB_ROOT_PASSWORD en .env}
+      MARIADB_DATABASE: ${DB_NAME:-calidad_agua}
+      MARIADB_USER: ${DB_USER:-agua}
+      MARIADB_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD en .env}
+      TZ: UTC
+    volumes:
+      - datos-mariadb:/var/lib/mysql                     # los datos sobreviven a docker compose down
+      - ./api/src/esquema.sql:/docker-entrypoint-initdb.d/01-esquema.sql:ro
+    ports:
+      - "127.0.0.1:3306:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    build: ./api
+    container_name: calidad-agua-api
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-calidad_agua}
+      DB_USER: ${DB_USER:-agua}
+      DB_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD en .env}
+      ESP32_API_KEY: ${ESP32_API_KEY:?Falta ESP32_API_KEY en .env}
+      PORT: 3000
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
   web:
     build: .
     container_name: calidad-agua-web
     ports:
-      - "8080:80"          # abre http://localhost:8080
+      - "8080:80"            # abierto a la red local: el ESP32 manda a http://IP-DE-LA-LAPTOP:8080/api/lecturas
     volumes:
-      # Monta docs/ en vivo: editas un archivo, recargas el navegador y ya.
       - ./docs:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api
     restart: unless-stopped
+
+  adminer:
+    image: adminer:4
+    container_name: calidad-agua-adminer
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    ports:
+      - "127.0.0.1:8081:8080"
+    depends_on:
+      - db
+    restart: unless-stopped
+
+volumes:
+  datos-mariadb:
