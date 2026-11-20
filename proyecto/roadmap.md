@@ -21,7 +21,13 @@
 - [x] Fuente "MariaDB" en la página (localhost).
 - [x] Firmware con envío a ThingSpeak y a la API.
 
+### Fase 2.6 · Fedora + MariaDB local ✅
+- [x] Compose para Fedora usando la MariaDB del equipo.
+- [x] Scripts de preparación y prueba.
+- [x] Guía FEDORA.md (terminal, DBeaver, ESP32).
+
 ### Fase 3 · Conexión real ⏳ (equipo)
+- [ ] En Fedora: seguir FEDORA.md Pasos 1 a 9.
 - [ ] Crear `.env` y levantar `docker compose` (Guía, Pasos 1 y 2).
 - [ ] Crear canal ThingSpeak con field1 a field4 (Paso 3).
 - [ ] Cambiar Ubidots por `enviarThingSpeak()` + `enviarAPI()` en el firmware (Paso 4).

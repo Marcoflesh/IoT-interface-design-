@@ -1,6 +1,6 @@
 # Handoff · Web IoT · Monitoreo de calidad del agua (TC1004B)
 
-**Fecha:** 2026-11-20 · **Último prompt:** opción 1, MariaDB en lugar de Ubidots
+**Fecha:** 2026-11-20 · **Último prompt:** conectar a la MariaDB local de Fedora (terminal y DBeaver) y dejar listo el ESP32
 
 ## Repositorio
 - https://github.com/Marcoflesh/IoT-interface-design- · rama `main`.
@@ -12,6 +12,12 @@ ESP32 ─HTTPS─► ThingSpeak ─► página (GitHub Pages y localhost)
       └─HTTP LAN─► nginx /api ─► API Node/Express ─► MariaDB 11.4 ─► página (solo localhost)
 ```
 Ubidots se retira. Docker Compose levanta 4 servicios: `web` (8080), `api` (interna), `db` (127.0.0.1:3306), `adminer` (127.0.0.1:8081).
+
+## Variante Fedora (MariaDB instalada en la laptop)
+- `docker-compose.fedora.yml`: solo `api` y `web`, ambos con `network_mode: host`. La API entra a MariaDB en 127.0.0.1:3306 y escucha solo en 127.0.0.1:3000; nginx expone 8080 para el ESP32. Volúmenes con `:z` por SELinux.
+- `scripts/fedora/preparar-mariadb.sh`: crea base y usuario (`localhost` y `127.0.0.1`), carga el esquema, abre 8080 en firewalld e imprime datos para DBeaver y el `API_URL` del ESP32. Idempotente.
+- `scripts/fedora/probar-conexion.sh`: prueba contenedores, página, API, MariaDB, llave falsa (401) y acceso por la IP de la red; `--limpiar` borra las lecturas de prueba.
+- Guía `FEDORA.md`: Docker en Fedora, MariaDB, `.env`, terminal, DBeaver, ESP32 (grupo dialout), uso diario y problemas comunes.
 
 ## Qué se entregó
 - **Página** (`docs/`): 4 pantallas, paleta azul, 3 fuentes de datos (ThingSpeak, MariaDB, demo).
@@ -36,7 +42,10 @@ Ubidots se retira. Docker Compose levanta 4 servicios: `web` (8080), `api` (inte
 - De punta a punta con **nginx real usando el mismo `nginx.conf`**: 40 lecturas simuladas del ESP32 por `/api` (40/40 guardadas), página leyendo de MariaDB con semáforo, alertas y "Probar conexión" correctos.
 - `docker compose config` válido.
 
+- Variante Fedora: `preparar-mariadb.sh` corrido dos veces contra MariaDB real (sin errores); API con `HOST=127.0.0.1` + nginx con `nginx.fedora.conf`; `probar-conexion.sh` pasó las 8 revisiones; `shellcheck` sin advertencias; `docker compose -f docker-compose.fedora.yml config` válido con SELinux `z`.
+
 ## No verificado (limitación del entorno)
+- Fedora real: SELinux, firewalld y `sudo mariadb` por socket no existen en el entorno de prueba (Ubuntu). Los scripts detectan y avisan si falta algo.
 - `docker compose up` completo: el entorno no tiene acceso a Docker Hub para bajar las imágenes. Los mismos archivos se probaron con MariaDB, Node y nginx instalados directamente.
 - ThingSpeak real y el ESP32 físico.
 

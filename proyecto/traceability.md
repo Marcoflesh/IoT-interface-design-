@@ -32,4 +32,6 @@
 | R17 | Usuario | MariaDB en lugar de Ubidots | `api/`, `docker-compose.yml` (servicio `db`) | ✅ Hecho (probado con MariaDB real) |
 | R18 | Usuario | ESP32 guarda en MariaDB de forma segura | `POST /api/lecturas` + `X-API-Key`, `esp32/envio_datos.ino` | ✅ Hecho (ESP32 simulado) |
 | R19 | Usuario | GitHub Pages sigue funcionando | La página publicada lee de ThingSpeak | ✅ Hecho |
+| R21 | Usuario | Usar la MariaDB local de Fedora (terminal y DBeaver) | `docker-compose.fedora.yml`, `scripts/fedora/preparar-mariadb.sh`, FEDORA.md Pasos 4 a 6 | ✅ Hecho (probado sin SELinux/firewalld) |
+| R22 | Usuario | Paso a paso completo para que funcione el ESP32 en Fedora | FEDORA.md Pasos 1 a 9, `probar-conexion.sh` | ✅ Hecho |
 | R20 | Spec §6 Fase 6 | Analizar datos y tendencias | Vista `resumen_diario`, consultas SQL, Adminer, exportar CSV | ✅ Hecho |
