@@ -1,7 +1,8 @@
 /*
  * datos.js
- * Dos fuentes de lecturas con la misma forma de salida:
- *   - ThingSpeak (datos reales del ESP32)
+ * Tres fuentes de lecturas con la misma forma de salida:
+ *   - ThingSpeak (datos reales del ESP32; funciona en GitHub Pages)
+ *   - API propia con MariaDB (solo en localhost con Docker)
  *   - Demo (datos simulados para presentar sin hardware)
  *
  * Cada lectura: { id, fecha: Date, ph, turbidez, conductividad, temperatura }
@@ -55,6 +56,47 @@
           })
         };
       });
+  }
+
+  // ---------- API propia (MariaDB) ----------
+
+  function baseAPI(config) {
+    return (config.api && config.api.url ? config.api.url : "").replace(/\/$/, "");
+  }
+
+  function leerAPI(config) {
+    return fetch(baseAPI(config) + "/api/lecturas?limit=" + config.resultados, { cache: "no-store" })
+      .then(function (r) {
+        if (r.status === 404) throw new Error("No se encontró la API. Solo funciona en localhost con Docker (http://localhost:8080).");
+        if (r.status === 503) throw new Error("La API no puede conectarse a MariaDB. Revisa: docker compose ps");
+        if (!r.ok) throw new Error("La API respondió " + r.status + ".");
+        return r.json();
+      })
+      .then(function (json) {
+        return {
+          canal: "MariaDB",
+          lecturas: json.lecturas.map(function (l) {
+            return {
+              id: l.id,
+              fecha: new Date(l.fecha),
+              ph: aNumero(l.ph),
+              turbidez: aNumero(l.turbidez),
+              conductividad: aNumero(l.conductividad),
+              temperatura: aNumero(l.temperatura)
+            };
+          })
+        };
+      });
+  }
+
+  function saludAPI(config) {
+    return fetch(baseAPI(config) + "/api/salud", { cache: "no-store" }).then(function (r) {
+      if (r.status === 404) throw new Error("No se encontró la API. Solo funciona en localhost con Docker (http://localhost:8080).");
+      return r.json().then(function (j) {
+        if (!j.ok) throw new Error(j.error || "La API no responde.");
+        return j;
+      });
+    });
   }
 
   // ---------- Demo ----------
@@ -127,6 +169,8 @@
 
   raiz.Datos = {
     leerThingSpeak: leerThingSpeak,
+    leerAPI: leerAPI,
+    saludAPI: saludAPI,
     urlThingSpeak: urlThingSpeak,
     crearDemo: crearDemo
   };

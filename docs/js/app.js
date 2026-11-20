@@ -130,7 +130,9 @@
     btn.disabled = true;
 
     var c = estado.config;
-    var promesa = c.fuente === "thingspeak" ? Datos.leerThingSpeak(c) : demo.leer(c.resultados);
+    var promesa = c.fuente === "thingspeak" ? Datos.leerThingSpeak(c)
+      : c.fuente === "api" ? Datos.leerAPI(c)
+      : demo.leer(c.resultados);
 
     promesa
       .then(function (r) {
@@ -139,9 +141,9 @@
         estado.error = null;
       })
       .catch(function (e) {
-        estado.error = e instanceof TypeError
-          ? "No se pudo conectar con ThingSpeak. Revisa tu internet y el Channel ID."
-          : e.message;
+        estado.error = !(e instanceof TypeError) ? e.message
+          : c.fuente === "api" ? "No se pudo conectar con la API. ¿Está corriendo docker compose?"
+          : "No se pudo conectar con ThingSpeak. Revisa tu internet y el Channel ID.";
       })
       .then(function () {
         estado.cargando = false;
@@ -192,6 +194,7 @@
     var c = estado.config;
     $("#nav-fuente").textContent = c.fuente === "thingspeak"
       ? "Fuente: ThingSpeak · canal " + (c.thingspeak.channelId || "sin configurar")
+      : c.fuente === "api" ? "Fuente: MariaDB (API local)"
       : "Fuente: demo (datos simulados)";
   }
 
@@ -239,7 +242,7 @@
     var c = estado.config;
     var l = ultima();
     var res = clasificar(l);
-    var vencida = l ? S.estaVencida(l.fecha, new Date(), c.minutosSinDatos) && c.fuente === "thingspeak" : true;
+    var vencida = l ? S.estaVencida(l.fecha, new Date(), c.minutosSinDatos) && c.fuente !== "demo" : true;
     var est = vencida ? "gris" : res.estado;
 
     // Aviso de error
@@ -634,16 +637,26 @@
 
     $("#btn-probar").addEventListener("click", function () {
       var c = leerFormulario();
-      if (!/^\d+$/.test(c.thingspeak.channelId)) { mensajeAjustes("Escribe un Channel ID numérico para probar.", "error"); return; }
+      var falla = function (e) {
+        mensajeAjustes(!(e instanceof TypeError) ? e.message
+          : c.fuente === "api" ? "No se pudo conectar con la API. ¿Está corriendo docker compose?"
+          : "No se pudo conectar. Revisa tu internet y el Channel ID.", "error");
+      };
       mensajeAjustes("Probando conexión…");
+      if (c.fuente === "api") {
+        Datos.saludAPI(c).then(function (j) {
+          mensajeAjustes("Conexión correcta con MariaDB: " + fmt(j.lecturas, 0) + " lecturas guardadas" +
+            (j.ultima ? ", la última " + hace(new Date(j.ultima)) + "." : "."), "ok");
+        }).catch(falla);
+        return;
+      }
+      if (!/^\d+$/.test(c.thingspeak.channelId)) { mensajeAjustes("Escribe un Channel ID numérico para probar ThingSpeak.", "error"); return; }
       c.resultados = 1;
       Datos.leerThingSpeak(c).then(function (r) {
         var l = r.lecturas[r.lecturas.length - 1];
         mensajeAjustes("Conexión correcta: canal «" + (r.canal || c.thingspeak.channelId) + "»" +
           (l ? ", última lectura " + hace(l.fecha) + "." : ", pero todavía no tiene lecturas."), "ok");
-      }).catch(function (e) {
-        mensajeAjustes(e instanceof TypeError ? "No se pudo conectar. Revisa tu internet y el Channel ID." : e.message, "error");
-      });
+      }).catch(falla);
     });
 
     $("#btn-restaurar").addEventListener("click", function () {
