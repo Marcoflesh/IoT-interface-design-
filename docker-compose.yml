@@ -1,0 +1,10 @@
+services:
+  web:
+    build: .
+    container_name: calidad-agua-web
+    ports:
+      - "8080:80"          # abre http://localhost:8080
+    volumes:
+      # Monta docs/ en vivo: editas un archivo, recargas el navegador y ya.
+      - ./docs:/usr/share/nginx/html:ro
+    restart: unless-stopped
