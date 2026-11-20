@@ -18,6 +18,8 @@ Todo lo local corre con un solo `docker compose up`:
 | `db` | MariaDB 11.4 con la tabla `lecturas` | localhost:3306 |
 | `adminer` | Ver y consultar la base desde el navegador | http://localhost:8081 |
 
+> 🐧 **¿Usas Fedora y ya tienes MariaDB instalada (terminal o DBeaver)?** Sigue **[FEDORA.md](FEDORA.md)**: usa tu MariaDB local y trae scripts que preparan todo en un comando.
+
 La página tiene 4 pantallas: **Inicio** (semáforo y 3 variables), **Historial** (gráficas), **Alertas** (cambios de color) y **Ajustes** (fuente de datos y umbrales). Puede leer de **ThingSpeak**, de **MariaDB** (solo en localhost) o de un **modo demo** para presentar sin hardware.
 
 ---
@@ -218,6 +220,9 @@ IoT-interface-design-/
 │   └── secretos.example.h
 ├── tests/semaforo.test.js
 ├── proyecto/                ← handoff.md, traceability.md, roadmap.md
+├── scripts/fedora/          ← preparar MariaDB local y probar la conexión
 ├── docker-compose.yml · Dockerfile · nginx.conf · .env.example
+├── docker-compose.fedora.yml · nginx.fedora.conf   ← variante Fedora con MariaDB local
+├── FEDORA.md                ← guía para Fedora + DBeaver
 └── README.md                ← esta guía
 ```
