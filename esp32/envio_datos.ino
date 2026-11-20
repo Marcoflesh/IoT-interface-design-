@@ -1,61 +1,93 @@
 /*
- * thingspeak_envio.ino
- * Fragmento para AGREGAR a su firmware actual (el que ya manda a Ubidots).
- * No reemplaza su código: añade una función que publica las mismas lecturas en ThingSpeak.
+ * envio_datos.ino
+ * Fragmento para su firmware: reemplaza el envío a Ubidots.
+ * Cada 20 s manda la misma lectura a dos destinos:
+ *   1) ThingSpeak  → lo que lee la página en GitHub Pages
+ *   2) API propia  → la guarda en MariaDB (Docker en la laptop)
  *
- * Mapeo de campos (debe coincidir con docs/js/config.js):
- *   field1 = pH
- *   field2 = Turbidez (NTU)
- *   field3 = Conductividad (µS/cm)
- *   field4 = Temperatura (°C)   (opcional)
+ * Mapeo en ThingSpeak (debe coincidir con docs/js/config.js):
+ *   field1 = pH · field2 = Turbidez (NTU) · field3 = Conductividad (µS/cm) · field4 = Temperatura (°C)
  *
- * Límite de ThingSpeak gratis: 1 envío cada 15 s por canal. Aquí se usa 20 s.
+ * Llaves y red: copien secretos.example.h como secretos.h.
  */
 
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
+#include "secretos.h"
 
-// Copien estas dos líneas a un archivo secretos.h (está en .gitignore) para no subir la llave a GitHub.
-const char* TS_WRITE_KEY = "PEGAR_WRITE_API_KEY";
-const unsigned long TS_INTERVALO_MS = 20000;
+const unsigned long INTERVALO_ENVIO_MS = 20000;   // ThingSpeak gratis: mínimo 15 s
+unsigned long ultimoEnvio = 0;
 
-unsigned long tsUltimoEnvio = 0;
+// Convierte una lectura a texto JSON. Si el sensor falló (NaN), manda null.
+String jsonNumero(float valor, int decimales) {
+  if (isnan(valor)) return "null";
+  return String(valor, decimales);
+}
 
-// Devuelve el entry_id que asignó ThingSpeak (> 0) o 0 / negativo si falló.
+// ---------- 1) ThingSpeak ----------
+// Regresa el entry_id (> 0) si se guardó; 0 si ThingSpeak lo rechazó por enviar muy seguido.
 long enviarThingSpeak(float ph, float turbidez, float conductividad, float temperatura) {
   if (WiFi.status() != WL_CONNECTED) return -1;
 
   WiFiClientSecure cliente;
-  cliente.setInsecure();   // Simplifica HTTPS en el prototipo (no valida el certificado).
+  cliente.setInsecure();   // Prototipo: HTTPS sin validar certificado.
 
-  HTTPClient http;
   String url = "https://api.thingspeak.com/update?api_key=";
   url += TS_WRITE_KEY;
-  url += "&field1=" + String(ph, 2);
-  url += "&field2=" + String(turbidez, 1);
-  url += "&field3=" + String(conductividad, 0);
-  url += "&field4=" + String(temperatura, 1);
+  if (!isnan(ph))            url += "&field1=" + String(ph, 2);
+  if (!isnan(turbidez))      url += "&field2=" + String(turbidez, 1);
+  if (!isnan(conductividad)) url += "&field3=" + String(conductividad, 0);
+  if (!isnan(temperatura))   url += "&field4=" + String(temperatura, 1);
 
+  HTTPClient http;
   http.begin(cliente, url);
   int codigo = http.GET();
   long entrada = -2;
-  if (codigo == 200) entrada = http.getString().toInt();   // "0" = rechazado por enviar antes de 15 s
+  if (codigo == 200) entrada = http.getString().toInt();
   http.end();
   return entrada;
 }
 
+// ---------- 2) API propia → MariaDB ----------
+// Regresa el código HTTP: 201 = guardado, 400 = dato inválido, 401 = llave incorrecta.
+int enviarAPI(float ph, float turbidez, float conductividad, float temperatura) {
+  if (WiFi.status() != WL_CONNECTED) return -1;
+
+  String cuerpo = "{\"dispositivo\":\"esp32-1\"";
+  cuerpo += ",\"ph\":"            + jsonNumero(ph, 2);
+  cuerpo += ",\"turbidez\":"      + jsonNumero(turbidez, 1);
+  cuerpo += ",\"conductividad\":" + jsonNumero(conductividad, 1);
+  cuerpo += ",\"temperatura\":"   + jsonNumero(temperatura, 1);
+  cuerpo += "}";
+
+  HTTPClient http;
+  http.begin(API_URL);           // http:// dentro de la red local
+  http.setTimeout(5000);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("X-API-Key", API_KEY);
+  int codigo = http.POST(cuerpo);
+  if (codigo != 201) {
+    Serial.print("API respondió: ");
+    Serial.println(http.getString());
+  }
+  http.end();
+  return codigo;
+}
+
 /*
- * En su loop(), después de leer los sensores y de enviar a Ubidots:
+ * En su loop(), después de leer los sensores (en lugar del envío a Ubidots):
  *
- *   if (millis() - tsUltimoEnvio >= TS_INTERVALO_MS) {
- *     tsUltimoEnvio = millis();
- *     long id = enviarThingSpeak(ph, turbidez, conductividad, temperatura);
- *     Serial.print("ThingSpeak entry_id: ");
- *     Serial.println(id);
+ *   if (millis() - ultimoEnvio >= INTERVALO_ENVIO_MS) {
+ *     ultimoEnvio = millis();
+ *
+ *     long ts = enviarThingSpeak(ph, turbidez, conductividad, temperatura);
+ *     int api = enviarAPI(ph, turbidez, conductividad, temperatura);
+ *
+ *     Serial.printf("ThingSpeak entry_id: %ld · API HTTP: %d\n", ts, api);
  *   }
  *
- * Si un sensor falla, NO manden 0: omitan ese field (quiten esa línea de la URL).
- * La página interpreta un field vacío como "sin dato" y pone el semáforo en gris,
- * en lugar de clasificar un 0 falso.
+ * Si un sensor falla, asígnenle NAN (ej. turbidez = NAN;): ThingSpeak omite ese field
+ * y la API guarda null. Nunca manden 0 como "sin dato".
+ * Si la laptop está apagada, enviarAPI() falla pero ThingSpeak sigue recibiendo datos.
  */
