@@ -3,6 +3,7 @@ const mariadb = require("mariadb");
 const { crearApp, asegurarEsquema } = require("./app");
 
 const PUERTO = Number(process.env.PORT || 3000);
+const HOST = process.env.HOST || "0.0.0.0";   // 127.0.0.1 en Fedora (red del equipo)
 const API_KEY = process.env.ESP32_API_KEY || "";
 
 if (API_KEY.length < 16) {
@@ -36,8 +37,8 @@ async function iniciar() {
       await esperar(2000);
     }
   }
-  const servidor = crearApp(pool, API_KEY).listen(PUERTO, "0.0.0.0", () => {
-    console.log(`API lista en el puerto ${PUERTO}`);
+  const servidor = crearApp(pool, API_KEY).listen(PUERTO, HOST, () => {
+    console.log(`API lista en ${HOST}:${PUERTO}`);
   });
   const cerrar = () => servidor.close(() => pool.end().then(() => process.exit(0)));
   process.on("SIGTERM", cerrar);

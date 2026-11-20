@@ -1,0 +1,37 @@
+# Variante para Fedora Linux usando la MariaDB YA INSTALADA en tu computadora
+# (la misma que ves en la terminal y en DBeaver). No levanta MariaDB en Docker.
+#
+#   docker compose -f docker-compose.fedora.yml up -d --build
+#
+# Ambos servicios usan la red del equipo (network_mode: host):
+#   - la API llega a MariaDB en 127.0.0.1:3306 sin abrir MariaDB a la red
+#   - nginx escucha en el puerto 8080 de la laptop (página + /api para el ESP32)
+# Los volúmenes llevan ":z" para que SELinux (activo en Fedora) permita leerlos.
+# Guía completa: FEDORA.md
+
+services:
+  api:
+    build: ./api
+    container_name: calidad-agua-api
+    network_mode: host
+    environment:
+      HOST: 127.0.0.1                  # la API solo escucha dentro de la laptop; el ESP32 entra por nginx
+      PORT: 3000
+      DB_HOST: ${DB_HOST:-127.0.0.1}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME:-calidad_agua}
+      DB_USER: ${DB_USER:-agua}
+      DB_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD en .env}
+      ESP32_API_KEY: ${ESP32_API_KEY:?Falta ESP32_API_KEY en .env}
+    restart: unless-stopped
+
+  web:
+    image: nginx:1.27-alpine
+    container_name: calidad-agua-web
+    network_mode: host
+    volumes:
+      - ./docs:/usr/share/nginx/html:ro,z
+      - ./nginx.fedora.conf:/etc/nginx/conf.d/default.conf:ro,z
+    depends_on:
+      - api
+    restart: unless-stopped
