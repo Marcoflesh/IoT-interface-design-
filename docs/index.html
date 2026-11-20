@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Calidad del Agua · Monitoreo IoT con ESP32</title>
+  <meta name="description" content="Semáforo de calidad del agua con pH, turbidez y conductividad medidos por un ESP32 y publicados en ThingSpeak.">
+  <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/styles.css">
+</head>
+<body>
+  <a class="saltar" href="#contenido">Saltar al contenido</a>
+
+  <div class="app">
+    <!-- Navegación: barra lateral en escritorio, barra inferior en móvil -->
+    <nav class="nav" aria-label="Pantallas">
+      <div class="marca">
+        <svg class="marca__logo" viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M16 3 C16 3 6 14 6 20 a10 10 0 0 0 20 0 C26 14 16 3 16 3 Z" fill="#2E6BB5"/>
+          <path d="M10 21 q3 -3 6 0 t6 0" fill="none" stroke="#E6EEF8" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>
+        <div>
+          <p class="marca__nombre">Calidad del Agua</p>
+          <p class="marca__sub">ESP32 · ThingSpeak</p>
+        </div>
+      </div>
+      <ul class="nav__lista">
+        <li><a class="nav__boton" href="#inicio" data-ruta="inicio">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2.5" width="6" height="19" rx="3"/><circle cx="12" cy="7" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="17" r="1.6"/></svg>
+          <span>Inicio</span></a></li>
+        <li><a class="nav__boton" href="#historial" data-ruta="historial">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18"/><path d="M4 15l5-5 4 3 7-8"/></svg>
+          <span>Historial</span></a></li>
+        <li><a class="nav__boton" href="#alertas" data-ruta="alertas">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>
+          <span>Alertas</span><span class="nav__badge" id="badge-alertas" hidden></span></a></li>
+        <li><a class="nav__boton" href="#ajustes" data-ruta="ajustes">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+          <span>Ajustes</span></a></li>
+      </ul>
+      <p class="nav__fuente" id="nav-fuente">Fuente: demo</p>
+    </nav>
+
+    <main id="contenido" class="contenido" tabindex="-1">
+
+      <!-- ===================== 1. INICIO ===================== -->
+      <section class="pantalla" id="pantalla-inicio" data-pantalla="inicio" aria-labelledby="t-inicio">
+        <header class="encabezado">
+          <div>
+            <h1 id="t-inicio">Estado del agua</h1>
+            <p class="encabezado__sub" id="ultima-lectura">Cargando lecturas…</p>
+          </div>
+          <button class="boton boton--primario" id="btn-actualizar" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg>
+            Actualizar ahora
+          </button>
+        </header>
+
+        <div class="aviso aviso--error" id="aviso-error" role="alert" hidden></div>
+
+        <div class="tarjeta semaforo" id="semaforo" data-estado="gris">
+          <div class="semaforo__luces" aria-hidden="true">
+            <span class="luz luz--rojo"></span>
+            <span class="luz luz--amarillo"></span>
+            <span class="luz luz--verde"></span>
+          </div>
+          <div class="semaforo__texto" aria-live="polite">
+            <p class="semaforo__etiqueta" id="semaforo-etiqueta">Sin datos</p>
+            <p class="semaforo__desc" id="semaforo-desc">Esperando la primera lectura del ESP32.</p>
+            <ul class="semaforo__chips" id="semaforo-chips"></ul>
+          </div>
+          <div class="semaforo__conteo">
+            <p class="conteo__num" id="conteo-num">–</p>
+            <p class="conteo__txt">de 3 variables <br>en rango</p>
+          </div>
+        </div>
+
+        <div class="demo-control" id="demo-control" hidden>
+          <p class="demo-control__titulo">Modo demo · simular muestra</p>
+          <div class="segmentado" role="group" aria-label="Escenario de demostración">
+            <button type="button" class="segmentado__op" data-escenario="limpia">Limpia</button>
+            <button type="button" class="segmentado__op" data-escenario="precaucion">1 fuera</button>
+            <button type="button" class="segmentado__op" data-escenario="noApta">No apta</button>
+          </div>
+        </div>
+
+        <div class="variables" id="variables"></div>
+
+        <p class="nota-temp" id="nota-temp" hidden></p>
+      </section>
+
+      <!-- ===================== 2. HISTORIAL ===================== -->
+      <section class="pantalla" id="pantalla-historial" data-pantalla="historial" aria-labelledby="t-historial" hidden>
+        <header class="encabezado">
+          <div>
+            <h1 id="t-historial">Historial</h1>
+            <p class="encabezado__sub">Tendencia de cada variable frente a su rango aceptable.</p>
+          </div>
+        </header>
+
+        <div class="filtros">
+          <div class="segmentado" role="group" aria-label="Variable" id="hist-variable">
+            <button type="button" class="segmentado__op" data-variable="ph">pH</button>
+            <button type="button" class="segmentado__op" data-variable="turbidez">Turbidez</button>
+            <button type="button" class="segmentado__op" data-variable="conductividad">Conductividad</button>
+          </div>
+          <div class="segmentado" role="group" aria-label="Cantidad de lecturas" id="hist-rango">
+            <button type="button" class="segmentado__op" data-rango="20">20</button>
+            <button type="button" class="segmentado__op" data-rango="50">50</button>
+            <button type="button" class="segmentado__op" data-rango="100">100 lecturas</button>
+          </div>
+        </div>
+
+        <div class="estadisticas" id="hist-stats"></div>
+
+        <div class="tarjeta grafica">
+          <h2 class="grafica__titulo" id="hist-titulo">pH</h2>
+          <div class="grafica__lienzo"><canvas id="hist-canvas" role="img" aria-label="Gráfica de la variable seleccionada"></canvas></div>
+          <p class="grafica__leyenda"><span class="leyenda-item"><span class="muestra muestra--banda"></span>Rango aceptable</span><span class="leyenda-item"><span class="muestra muestra--punto"></span>Lectura fuera de rango</span></p>
+        </div>
+
+        <details class="tarjeta tabla-detalle">
+          <summary>Ver tabla de lecturas</summary>
+          <div class="tabla-scroll">
+            <table class="tabla">
+              <thead><tr><th scope="col">Hora</th><th scope="col">pH</th><th scope="col">Turbidez (NTU)</th><th scope="col">Conductividad (µS/cm)</th><th scope="col">Estado</th></tr></thead>
+              <tbody id="hist-tabla"></tbody>
+            </table>
+          </div>
+        </details>
+      </section>
+
+      <!-- ===================== 3. ALERTAS ===================== -->
+      <section class="pantalla" id="pantalla-alertas" data-pantalla="alertas" aria-labelledby="t-alertas" hidden>
+        <header class="encabezado">
+          <div>
+            <h1 id="t-alertas">Alertas</h1>
+            <p class="encabezado__sub">Cada vez que el semáforo cambió de color.</p>
+          </div>
+        </header>
+
+        <div class="tarjeta distribucion">
+          <h2 class="distribucion__titulo">Tiempo en cada estado <span id="dist-n"></span></h2>
+          <div class="distribucion__barra" id="dist-barra" role="img"></div>
+          <ul class="distribucion__leyenda" id="dist-leyenda"></ul>
+        </div>
+
+        <div class="segmentado" role="group" aria-label="Filtrar alertas" id="alertas-filtro">
+          <button type="button" class="segmentado__op" data-filtro="todas">Todas</button>
+          <button type="button" class="segmentado__op" data-filtro="rojo">Rojo</button>
+          <button type="button" class="segmentado__op" data-filtro="amarillo">Amarillo</button>
+          <button type="button" class="segmentado__op" data-filtro="verde">Recuperaciones</button>
+        </div>
+
+        <ol class="eventos" id="lista-alertas"></ol>
+      </section>
+
+      <!-- ===================== 4. AJUSTES ===================== -->
+      <section class="pantalla" id="pantalla-ajustes" data-pantalla="ajustes" aria-labelledby="t-ajustes" hidden>
+        <header class="encabezado">
+          <div>
+            <h1 id="t-ajustes">Ajustes</h1>
+            <p class="encabezado__sub">Se guardan en este navegador.</p>
+          </div>
+        </header>
+
+        <form id="form-ajustes" class="ajustes" novalidate>
+          <fieldset class="tarjeta">
+            <legend>Fuente de datos</legend>
+            <div class="radios">
+              <label class="radio"><input type="radio" name="fuente" value="demo"> <span><strong>Demo</strong> · datos simulados para presentar sin hardware</span></label>
+              <label class="radio"><input type="radio" name="fuente" value="thingspeak"> <span><strong>ThingSpeak</strong> · lecturas reales del ESP32</span></label>
+            </div>
+            <div class="campos">
+              <label class="campo">Channel ID
+                <input type="text" name="channelId" inputmode="numeric" autocomplete="off" spellcheck="false" placeholder="2741234…">
+              </label>
+              <label class="campo">Read API Key
+                <input type="text" name="readApiKey" autocomplete="off" spellcheck="false" placeholder="ABCD1234EFGH5678…">
+                <span class="campo__ayuda">Déjala vacía si el canal es público.</span>
+              </label>
+              <label class="campo">Actualizar cada (segundos)
+                <input type="number" name="intervaloSeg" min="15" max="600" step="1">
+              </label>
+            </div>
+            <p class="aviso aviso--info">Usa solo la <strong>Read</strong> API Key. La Write API Key va únicamente en el ESP32: la página es pública en GitHub Pages.</p>
+          </fieldset>
+
+          <fieldset class="tarjeta">
+            <legend>Umbrales del semáforo</legend>
+            <p class="ajustes__regla">Verde: 3 en rango · Amarillo: 1 fuera · Rojo: 2 o 3 fuera</p>
+            <div class="tabla-scroll">
+              <table class="tabla tabla--umbrales">
+                <thead><tr><th scope="col">Variable</th><th scope="col">Mínimo</th><th scope="col">Máximo</th><th scope="col">Crítico mín.</th><th scope="col">Crítico máx.</th></tr></thead>
+                <tbody id="tabla-umbrales"></tbody>
+              </table>
+            </div>
+            <label class="interruptor">
+              <input type="checkbox" name="criticoRojo">
+              <span>Poner rojo si <strong>una sola</strong> variable pasa su límite crítico</span>
+            </label>
+          </fieldset>
+
+          <div class="ajustes__acciones">
+            <button type="submit" class="boton boton--primario">Guardar</button>
+            <button type="button" class="boton" id="btn-probar">Probar conexión</button>
+            <button type="button" class="boton boton--fantasma" id="btn-restaurar">Restaurar valores</button>
+          </div>
+          <p class="ajustes__estado" id="ajustes-estado" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <footer class="pie">
+        <p>Indicadores de calidad, no un análisis de laboratorio certificado. Referencia de umbrales: NOM-127-SSA1-2021.</p>
+      </footer>
+    </main>
+  </div>
+
+  <script src="./js/vendor/chart.umd.min.js"></script>
+  <script src="./js/config.js"></script>
+  <script src="./js/semaforo.js"></script>
+  <script src="./js/datos.js"></script>
+  <script src="./js/app.js"></script>
+</body>
+</html>
