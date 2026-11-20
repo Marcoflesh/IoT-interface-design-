@@ -1,44 +1,47 @@
 # Handoff · Web IoT · Monitoreo de calidad del agua (TC1004B)
 
-**Fecha:** 2026-11-20 · **Último prompt:** subir el proyecto a GitHub
+**Fecha:** 2026-11-20 · **Último prompt:** opción 1, MariaDB en lugar de Ubidots
 
 ## Repositorio
-- https://github.com/Marcoflesh/IoT-interface-design- · rama `main` (6 commits iniciales).
+- https://github.com/Marcoflesh/IoT-interface-design- · rama `main`.
 - GitHub Pages aún **no** está activado: Settings → Pages → `main` / `/docs`. URL esperada: https://marcoflesh.github.io/IoT-interface-design-/
 
+## Arquitectura actual
+```
+ESP32 ─HTTPS─► ThingSpeak ─► página (GitHub Pages y localhost)
+      └─HTTP LAN─► nginx /api ─► API Node/Express ─► MariaDB 11.4 ─► página (solo localhost)
+```
+Ubidots se retira. Docker Compose levanta 4 servicios: `web` (8080), `api` (interna), `db` (127.0.0.1:3306), `adminer` (127.0.0.1:8081).
+
 ## Qué se entregó
-- Página completa en `docs/`: 4 pantallas (Inicio, Historial, Alertas, Ajustes), HTML/CSS/JS sin frameworks, paleta azul de neutro a oscuro, navegación por botones (lateral en escritorio, inferior en móvil).
-- Fuente de datos: **ThingSpeak** (Read API) con **modo demo** que incluye 3 escenarios (limpia, 1 fuera, no apta) para presentar sin hardware.
-- Localhost con **Docker** (nginx, puerto 8080, `docs/` montada en vivo).
-- Listo para **GitHub Pages** (rama `main`, carpeta `/docs`, `.nojekyll`).
-- Fragmento de firmware `esp32/thingspeak_envio.ino` para enviar a ThingSpeak **además** de Ubidots.
-- Guía paso a paso en `README.md`.
-- Pruebas de la lógica del semáforo: 8/8 pasan (`node --test tests/*.test.js`).
+- **Página** (`docs/`): 4 pantallas, paleta azul, 3 fuentes de datos (ThingSpeak, MariaDB, demo).
+- **API** (`api/`): `POST /api/lecturas` con header `X-API-Key`, `GET /api/lecturas?limit=`, `GET /api/salud`. Valida tipos y rangos físicos; acepta `null` para sensores caídos.
+- **Base**: tabla `lecturas` (fecha UTC, dispositivo, 4 variables) y vista `resumen_diario`. El esquema se crea solo al arrancar.
+- **Firmware** (`esp32/envio_datos.ino`): `enviarThingSpeak()` y `enviarAPI()`, llaves en `secretos.h` (ignorado por git).
+- **Guía** paso a paso en `README.md` (9 pasos + solución de problemas + consultas SQL).
 
 ## Decisiones
 | Decisión | Motivo |
 |---|---|
-| Mantener Ubidots y agregar ThingSpeak | No romper lo que ya funciona. ThingSpeak tiene Read API Key separada (solo lectura), segura para una página pública. |
-| Semáforo por conteo: 0 fuera verde, 1 amarillo, 2-3 rojo | Regla definida por el equipo. |
-| Estado gris | Evita mostrar verde con datos viejos (más de 3 min) o incompletos. |
-| pH 6.5 a 8.5, turbidez ≤ 4 NTU | NOM-127-SSA1-2021. |
-| Conductividad 50 a 1500 µS/cm | La NOM no la fija; se deriva de SDT 1000 mg/L (factor ≈ 0.65). Mínimo 50 detecta sonda fuera del agua. |
-| "Crítico = rojo" opcional y apagado | Con la regla de conteo, un pH de 3 solo da amarillo. Se dejó como opción para que el equipo decida. |
-| Chart.js local (no CDN) | Funciona igual en localhost y Pages; una dependencia menos de red. |
-| Ajustes en localStorage + `config.js` | Cada navegador guarda sus ajustes; `config.js` define con qué arranca la versión publicada. |
+| MariaDB reemplaza a Ubidots, ThingSpeak se queda | GitHub Pages necesita una fuente pública HTTPS; MariaDB solo vive en la laptop. |
+| API entre el ESP32 y MariaDB | No exponer usuario/contraseña de la base en el firmware ni abrir el puerto 3306. |
+| ESP32 → nginx:8080/api (no al puerto de la API) | Un solo puerto abierto en la red local; la página usa el mismo origen, sin CORS. |
+| Puertos de MariaDB y Adminer solo en 127.0.0.1 | Nadie más en la red WiFi puede entrar a la base. |
+| Fechas en UTC | Evita confusiones de zona horaria; la página convierte a hora local. |
+| Semáforo: verde 3 en rango, amarillo 1 fuera, rojo 2-3 fuera, gris sin datos | Regla del equipo + estado gris para datos viejos. |
+| pH 6.5 a 8.5, turbidez ≤ 4 NTU, conductividad 50 a 1500 µS/cm | NOM-127-SSA1-2021; conductividad derivada del límite de SDT. |
 
 ## Verificado
-- Las 4 pantallas en escritorio (1366 px) y móvil (390 px) con capturas.
-- Escenarios demo verde, amarillo y rojo; alertas y distribución de estados.
-- Validación de Ajustes y manejo de error de conexión.
-- Contraste WCAG de los pares de color del tema (todos los textos ≥ 4.5:1).
+- Semáforo: 8/8 pruebas. API: 5/5 pruebas, incluida una de integración contra **MariaDB real** (inserción, lectura, `null`, fechas UTC, llave incorrecta, JSON con `nan`, vista).
+- De punta a punta con **nginx real usando el mismo `nginx.conf`**: 40 lecturas simuladas del ESP32 por `/api` (40/40 guardadas), página leyendo de MariaDB con semáforo, alertas y "Probar conexión" correctos.
+- `docker compose config` válido.
 
-## No verificado (limitación del entorno de trabajo)
-- `docker compose up` no se pudo correr: el entorno no tiene acceso a Docker Hub. Los mismos archivos se sirvieron con un servidor local y funcionan.
-- Conexión real a ThingSpeak: el entorno bloquea la salida a api.thingspeak.com. Probar con el Paso 4 de la guía.
+## No verificado (limitación del entorno)
+- `docker compose up` completo: el entorno no tiene acceso a Docker Hub para bajar las imágenes. Los mismos archivos se probaron con MariaDB, Node y nginx instalados directamente.
+- ThingSpeak real y el ESP32 físico.
 
 ## Pendiente del equipo
-- Crear el canal de ThingSpeak y agregar el envío al firmware (Pasos 2 y 3).
+- Pasos 1 a 6 de la guía con el hardware real.
 - Decidir si se activa "crítico = rojo".
+- Activar GitHub Pages.
 - Wireframes y presentación de 4 slides (entregable de la actividad).
-- Nombre final del proyecto y nombres del equipo.

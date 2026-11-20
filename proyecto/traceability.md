@@ -1,6 +1,6 @@
 # Traceability · Web IoT · Calidad del agua
 
-**Actualizado:** 2026-11-20
+**Actualizado:** 2026-11-20 (MariaDB)
 
 ## Pantallas
 | # | Pantalla | Propósito | Navegación |
@@ -8,7 +8,7 @@
 | P1 | Inicio | Semáforo, conteo de variables en rango, 3 tarjetas con medidor, temperatura, control demo | Tarjeta → P2 de esa variable |
 | P2 | Historial | Gráfica con banda de rango, puntos fuera de rango, estadísticas, tabla | Botones de variable y de 20/50/100 lecturas |
 | P3 | Alertas | Distribución de estados y lista de cambios de color con filtros | Insignia en el menú con el número de alertas |
-| P4 | Ajustes | Fuente (demo/ThingSpeak), Channel ID, Read Key, intervalo, umbrales, crítico | Guardar, Probar conexión, Restaurar |
+| P4 | Ajustes | Fuente (demo/ThingSpeak/MariaDB), Channel ID, Read Key, intervalo, umbrales, crítico | Guardar, Probar conexión, Restaurar |
 
 ## Matriz requisito → implementación
 | ID | Fuente | Requisito | Dónde se cumple | Estado |
@@ -25,7 +25,11 @@
 | R10 | Instrucciones | Paleta azul de neutro a oscuro | `styles.css` | ✅ Hecho |
 | R11 | Usuario | Localhost con Docker | `Dockerfile`, `docker-compose.yml` | ⚠️ Hecho, sin probar en este entorno |
 | R12 | Usuario | GitHub Pages | Carpeta `docs/`, guía Paso 6 | ✅ Listo para publicar |
-| R13 | Usuario | ThingSpeak | `datos.js`, Ajustes, `esp32/thingspeak_envio.ino` | ⚠️ Hecho, falta prueba con canal real |
+| R13 | Usuario | ThingSpeak | `datos.js`, Ajustes, `esp32/envio_datos.ino` | ⚠️ Hecho, falta prueba con canal real |
 | R14 | Usuario | Guía paso a paso | `README.md` | ✅ Hecho |
 | R15 | Actividad §4 | Presentación de 4 slides | Fuera de la página | ⏳ Pendiente |
 | R16 | Actividad §6 | PDF/PPT con wireframes, equipo, nombre | Fuera de la página | ⏳ Pendiente |
+| R17 | Usuario | MariaDB en lugar de Ubidots | `api/`, `docker-compose.yml` (servicio `db`) | ✅ Hecho (probado con MariaDB real) |
+| R18 | Usuario | ESP32 guarda en MariaDB de forma segura | `POST /api/lecturas` + `X-API-Key`, `esp32/envio_datos.ino` | ✅ Hecho (ESP32 simulado) |
+| R19 | Usuario | GitHub Pages sigue funcionando | La página publicada lee de ThingSpeak | ✅ Hecho |
+| R20 | Spec §6 Fase 6 | Analizar datos y tendencias | Vista `resumen_diario`, consultas SQL, Adminer, exportar CSV | ✅ Hecho |

@@ -16,15 +16,21 @@
 - [x] Semáforo con pruebas, gráficas, alertas, ajustes.
 - [x] Docker para localhost.
 
+### Fase 2.5 · Base de datos propia ✅
+- [x] MariaDB + API Node en Docker (reemplaza Ubidots).
+- [x] Fuente "MariaDB" en la página (localhost).
+- [x] Firmware con envío a ThingSpeak y a la API.
+
 ### Fase 3 · Conexión real ⏳ (equipo)
-- [ ] Crear canal ThingSpeak con field1 a field4 (Guía, Paso 2).
-- [ ] Agregar `enviarThingSpeak()` al firmware (Paso 3).
-- [ ] Conectar la página y probar (Paso 4).
-- [ ] Probar con muestras reales (Paso 5).
+- [ ] Crear `.env` y levantar `docker compose` (Guía, Pasos 1 y 2).
+- [ ] Crear canal ThingSpeak con field1 a field4 (Paso 3).
+- [ ] Cambiar Ubidots por `enviarThingSpeak()` + `enviarAPI()` en el firmware (Paso 4).
+- [ ] Verificar datos en ThingSpeak y MariaDB, conectar la página (Pasos 5 y 6).
+- [ ] Probar con muestras reales (Paso 7).
 
 ### Fase 4 · Publicación ⏳
 - [x] Subir el código al repo `IoT-interface-design-`.
-- [ ] Activar GitHub Pages desde `/docs` (Paso 6).
+- [ ] Activar GitHub Pages desde `/docs` (Paso 8).
 - [ ] Poner Channel ID en `docs/js/config.js` para que arranque conectada.
 
 ### Fase 5 · Entregable de la actividad ⏳

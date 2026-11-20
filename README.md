@@ -1,16 +1,24 @@
 # Monitoreo de calidad del agua · Página web IoT (TC1004B)
 
-Página web con semáforo de calidad del agua. Lee pH, turbidez y conductividad que el **ESP32** publica en **ThingSpeak**. Corre en **localhost con Docker** y se publica en **GitHub Pages**.
+Semáforo de calidad del agua con pH, turbidez y conductividad medidos por un **ESP32**. Las lecturas se guardan en dos lugares: **ThingSpeak** (para la página publicada en **GitHub Pages**) y una base de datos propia **MariaDB** (historial completo en la laptop, con Docker).
 
 ```
-[Sensores] → [ESP32] ──WiFi/HTTPS cada 20 s──┬──► Ubidots     (lo que ya tienen, se queda igual)
-                                              └──► ThingSpeak  (nuevo)
-                                                       │  HTTPS (Read API Key)
-                                                       ▼
-                               Página web: localhost:8080 (Docker)  o  GitHub Pages
+                         ┌──HTTPS cada 20 s──► ThingSpeak ──HTTPS──► Página en GitHub Pages
+[Sensores] → [ESP32] ────┤                                  └─────► Página en localhost:8080
+                         └──HTTP (red local)──► API (Node) ──► MariaDB
+                                                    └──────────────► Página en localhost:8080
 ```
 
-La página tiene 4 pantallas: **Inicio** (semáforo y 3 variables), **Historial** (gráficas), **Alertas** (cambios de color) y **Ajustes** (fuente de datos y umbrales). Incluye un **modo demo** con datos simulados para presentar sin el hardware.
+Todo lo local corre con un solo `docker compose up`:
+
+| Servicio | Qué es | Dirección |
+|---|---|---|
+| `web` | nginx: la página y el acceso a la API (`/api`) | http://localhost:8080 |
+| `api` | Node + Express: recibe lecturas del ESP32 y las guarda | (interno, vía `/api`) |
+| `db` | MariaDB 11.4 con la tabla `lecturas` | localhost:3306 |
+| `adminer` | Ver y consultar la base desde el navegador | http://localhost:8081 |
+
+La página tiene 4 pantallas: **Inicio** (semáforo y 3 variables), **Historial** (gráficas), **Alertas** (cambios de color) y **Ajustes** (fuente de datos y umbrales). Puede leer de **ThingSpeak**, de **MariaDB** (solo en localhost) o de un **modo demo** para presentar sin hardware.
 
 ---
 
@@ -29,9 +37,7 @@ La página tiene 4 pantallas: **Inicio** (semáforo y 3 variables), **Historial*
 | 🔴 Rojo | 2 o 3 variables fuera de rango |
 | ⚪ Gris | Falta una lectura, o la última tiene más de 3 min (el ESP32 dejó de enviar) |
 
-**Opcional (apagado por defecto, en Ajustes):** rojo inmediato si una sola variable pasa su límite crítico (pH < 6.0 o > 9.0, turbidez > 50 NTU, conductividad > 3000 µS/cm). Todos los umbrales se editan en la pantalla Ajustes.
-
-La lógica está en `docs/js/semaforo.js` y tiene pruebas: `node --test tests/*.test.js`.
+**Opcional (apagado por defecto, en Ajustes):** rojo inmediato si una sola variable pasa su límite crítico (pH < 6.0 o > 9.0, turbidez > 50 NTU, conductividad > 3000 µS/cm).
 
 ---
 
@@ -40,61 +46,100 @@ La lógica está en `docs/js/semaforo.js` y tiene pruebas: `node --test tests/*.
 1. **Docker Desktop** (Windows/Mac) o Docker Engine (Linux). Verifiquen con `docker --version`.
 2. **Git** y una cuenta de **GitHub**.
 3. Una cuenta gratuita de **ThingSpeak** (se entra con cuenta de MathWorks).
+4. Arduino IDE con la placa ESP32 (ya lo tienen).
 
-## Paso 1 · Correr la página en localhost con Docker
+## Paso 1 · Configurar contraseñas (`.env`)
 
 ```bash
+git clone https://github.com/Marcoflesh/IoT-interface-design-.git
 cd IoT-interface-design-
-docker compose up -d --build
+cp .env.example .env          # en Windows (PowerShell): copy .env.example .env
 ```
 
-Abran **http://localhost:8080**. Arranca en modo demo, así que ya deben ver el semáforo funcionando.
+Abran `.env` y cambien las dos contraseñas y la `ESP32_API_KEY`. Para generar una llave:
 
-- Editan cualquier archivo dentro de `docs/`, recargan el navegador y ya se ve el cambio (la carpeta está montada en vivo).
-- Ver logs: `docker compose logs -f`
-- Apagar: `docker compose down`
+```bash
+python -c "import secrets; print(secrets.token_hex(16))"
+```
 
-> Sin Docker (plan B): `cd docs && python -m http.server 8080`. No abran el `index.html` con doble clic: el navegador bloquea las peticiones a ThingSpeak desde `file://`.
+`.env` está en `.gitignore`: **nunca se sube a GitHub**.
 
-## Paso 2 · Crear el canal en ThingSpeak
+## Paso 2 · Levantar todo con Docker
+
+```bash
+docker compose up -d --build
+docker compose ps             # los 4 servicios deben decir "running" (db: "healthy")
+```
+
+Revisen:
+
+- http://localhost:8080 → la página (arranca en modo demo).
+- http://localhost:8080/api/salud → debe responder `{"ok":true,"base":"MariaDB","lecturas":0,...}`.
+- http://localhost:8081 → Adminer. Sistema: **MariaDB/MySQL**, servidor: `db`, usuario y contraseña de su `.env`, base: `calidad_agua`.
+
+Comandos útiles:
+
+| Para | Comando |
+|---|---|
+| Ver logs de la API | `docker compose logs -f api` |
+| Apagar (los datos se conservan) | `docker compose down` |
+| Borrar también la base de datos | `docker compose down -v` |
+
+Los cambios dentro de `docs/` se ven con solo recargar el navegador. Si cambian algo en `api/`, corran `docker compose up -d --build api`.
+
+## Paso 3 · Crear el canal en ThingSpeak
 
 1. En thingspeak.mathworks.com: **Channels → My Channels → New Channel**.
-2. Llenen los campos **en este orden** (la página depende de él):
-   - Field 1: `pH`
-   - Field 2: `Turbidez`
-   - Field 3: `Conductividad`
-   - Field 4: `Temperatura`
-3. **Save Channel**. Anoten el **Channel ID** (número arriba del canal).
+2. Llenen los campos **en este orden** (la página depende de él): Field 1 `pH`, Field 2 `Turbidez`, Field 3 `Conductividad`, Field 4 `Temperatura`.
+3. **Save Channel** y anoten el **Channel ID**.
 4. Pestaña **API Keys**: copien la **Write API Key** (para el ESP32) y la **Read API Key** (para la página).
-5. Opcional: en **Sharing** elijan "Share channel view with everyone". Con el canal público la página no necesita Read API Key.
+5. Opcional: en **Sharing** elijan "Share channel view with everyone" y la página no necesitará Read API Key.
 
-## Paso 3 · Que el ESP32 también mande a ThingSpeak (sin quitar Ubidots)
+## Paso 4 · Firmware: ESP32 → ThingSpeak + MariaDB (en lugar de Ubidots)
 
-1. Abran `esp32/thingspeak_envio.ino` y copien a su firmware la función `enviarThingSpeak(...)` y sus `#include`.
-2. Pongan su Write API Key en `TS_WRITE_KEY`. Mejor: muévanla a `esp32/secretos.h` (ya está en `.gitignore`) para no subirla a GitHub.
-3. En su `loop()`, después de enviar a Ubidots, llamen a `enviarThingSpeak(ph, turbidez, conductividad, temperatura)` **cada 20 s** (el plan gratis rechaza envíos con menos de 15 s de diferencia).
-4. Monitor serie: debe imprimir un `entry_id` mayor que 0. Si imprime `0`, están enviando demasiado rápido.
-5. En ThingSpeak, pestaña **Private View**: deben aparecer puntos en las 4 gráficas.
+1. Saquen la **IP de la laptop** que corre Docker (misma red WiFi que el ESP32):
+   Windows `ipconfig` (Adaptador Wi-Fi → IPv4) · Mac `ipconfig getifaddr en0` · Linux `hostname -I`.
+2. Copien `esp32/secretos.example.h` como `esp32/secretos.h` junto a su sketch y llenen: WiFi, `TS_WRITE_KEY`, `API_URL` (ej. `http://192.168.1.50:8080/api/lecturas`) y `API_KEY` (la misma `ESP32_API_KEY` del `.env`).
+3. Copien a su firmware las funciones de `esp32/envio_datos.ino` (`enviarThingSpeak` y `enviarAPI`) y **quiten el envío a Ubidots**.
+4. En el `loop()`, cada 20 s, llamen a las dos funciones (el ejemplo está al final del archivo).
+5. Monitor serie: debe salir `ThingSpeak entry_id: 123 · API HTTP: 201`.
 
-Si un sensor falla, **no manden 0**: omitan ese field. La página lo toma como "sin dato" y pone gris en vez de clasificar un valor falso.
+Qué significa cada respuesta de la API:
 
-## Paso 4 · Conectar la página a ThingSpeak
+| Código | Significado |
+|---|---|
+| 201 | Guardado en MariaDB |
+| 400 | Dato inválido (texto, `nan` o valor físicamente imposible); el mensaje dice cuál |
+| 401 | `API_KEY` distinta a la del `.env` |
+| -1 / timeout | El ESP32 no llega a la laptop: revisen IP, misma red y firewall (Paso 9) |
 
-1. En http://localhost:8080 → **Ajustes**.
-2. Fuente: **ThingSpeak**. Escriban el **Channel ID** y la **Read API Key** (vacía si el canal es público).
-3. **Probar conexión**: debe decir "Conexión correcta" y cuándo fue la última lectura.
-4. **Guardar**. Vuelvan a Inicio: el semáforo ya muestra datos reales y se actualiza solo cada 20 s.
+Si un sensor falla, asígnenle `NAN`: ThingSpeak omite ese field y la API guarda `null`. **Nunca manden 0 como "sin dato"**.
 
-Los Ajustes se guardan en el navegador de cada quien. Para que la página publicada **ya arranque conectada** para cualquier persona, editen `docs/js/config.js`:
+## Paso 5 · Verificar que llegan los datos
+
+- **ThingSpeak:** pestaña Private View del canal, deben aparecer puntos.
+- **MariaDB:** http://localhost:8080/api/salud debe mostrar `lecturas` subiendo, o en Adminer abran la tabla `lecturas`.
+
+## Paso 6 · Elegir de dónde lee la página
+
+En la página → **Ajustes** → Fuente de datos → **Probar conexión** → **Guardar**.
+
+| Fuente | Dónde funciona | Para qué |
+|---|---|---|
+| ThingSpeak | localhost y GitHub Pages | La versión pública |
+| MariaDB | Solo http://localhost:8080 (Docker) | Demo en clase con su propia base |
+| Demo | Siempre | Presentar sin hardware |
+
+Los Ajustes se guardan en cada navegador. Para que la versión publicada **ya arranque con ThingSpeak**, editen `docs/js/config.js`:
 
 ```js
 fuente: "thingspeak",
 thingspeak: { channelId: "SU_CHANNEL_ID", readApiKey: "SU_READ_KEY_O_VACIO" },
 ```
 
-⚠️ **Nunca** pongan la Write API Key en `docs/`. Todo lo que está ahí es público en GitHub Pages.
+⚠️ Nunca pongan la Write API Key ni la `ESP32_API_KEY` en `docs/`: todo lo que está ahí es público.
 
-## Paso 5 · Probar el semáforo con muestras reales
+## Paso 7 · Probar el semáforo con muestras reales
 
 | Muestra | Resultado esperado |
 |---|---|
@@ -105,26 +150,29 @@ thingspeak: { channelId: "SU_CHANNEL_ID", readApiKey: "SU_READ_KEY_O_VACIO" },
 | Sonda de conductividad fuera del agua | 🟡 Amarillo (conductividad < 50) |
 | Desconectar el ESP32 por 3 min | ⚪ Gris |
 
-En Alertas debe aparecer cada cambio de color. Si algo no cuadra, revisen primero la calibración en el firmware (buffers de pH 4/7/10 y solución de referencia para conductividad).
+## Paso 8 · Publicar en GitHub Pages
 
-## Paso 6 · Publicar en GitHub Pages
+En GitHub: **Settings → Pages → Build and deployment → Source: Deploy from a branch → Branch: `main` / carpeta `/docs` → Save**. En 1 o 2 minutos queda en **https://marcoflesh.github.io/IoT-interface-design-/**. Cada `git push` la vuelve a publicar.
 
-El código ya vive en **https://github.com/Marcoflesh/IoT-interface-design-**. Para traerlo y subir cambios:
+La versión de GitHub Pages lee de **ThingSpeak**. MariaDB vive en la laptop, así que solo se ve desde localhost.
 
-```bash
-git clone https://github.com/Marcoflesh/IoT-interface-design-.git
-cd IoT-interface-design-
-# ...cambios...
-git add .
-git commit -m "Describe el cambio"
-git push
+## Paso 9 · Consultas SQL útiles (Adminer → "Comando SQL")
+
+```sql
+-- Últimas 20 lecturas
+SELECT * FROM lecturas ORDER BY id DESC LIMIT 20;
+
+-- Promedios, mínimos y máximos por día (vista ya creada)
+SELECT * FROM resumen_diario;
+
+-- Lecturas fuera de rango (mismos umbrales del semáforo)
+SELECT fecha, ph, turbidez, conductividad FROM lecturas
+WHERE ph NOT BETWEEN 6.5 AND 8.5 OR turbidez > 4 OR conductividad NOT BETWEEN 50 AND 1500;
+
+-- Exportar a Excel: en Adminer, botón "Exportar" → formato CSV.
 ```
 
-En GitHub: **Settings → Pages → Build and deployment → Source: Deploy from a branch → Branch: `main` / carpeta `/docs` → Save**. En 1 o 2 minutos la página queda en:
-
-**https://marcoflesh.github.io/IoT-interface-design-/**
-
-Cada `git push` vuelve a publicarla. GitHub Pages usa la carpeta `docs/` y Docker usa esa misma carpeta, así que lo que ven en localhost es lo que se publica.
+Las fechas se guardan en **UTC** (Querétaro = UTC−6). La página las convierte a hora local sola.
 
 ---
 
@@ -132,12 +180,22 @@ Cada `git push` vuelve a publicarla. GitHub Pages usa la carpeta `docs/` y Docke
 
 | Síntoma | Causa probable | Qué hacer |
 |---|---|---|
-| `port is already allocated` | Otro programa usa el 8080 | Cambien `"8080:80"` por `"8081:80"` en `docker-compose.yml` |
-| "Canal no encontrado o Read API Key incorrecta" | Channel ID o llave mal copiados | Cópienlos otra vez desde la pestaña API Keys |
-| "El canal es privado" | Falta la Read API Key | Agréguenla o hagan público el canal |
-| Semáforo gris con datos viejos | El ESP32 no envía hace más de 3 min | Revisen WiFi y el monitor serie |
-| ESP32 imprime `entry_id: 0` | Envía cada menos de 15 s | Suban `TS_INTERVALO_MS` a 20000 |
-| La página publicada no cambia | Caché del navegador | Recarguen con Ctrl+Shift+R |
+| `Falta DB_PASSWORD en .env` | No existe el `.env` | Paso 1 |
+| `port is already allocated` | Otro programa usa 8080, 8081 o 3306 | Cambien el primer número del puerto en `docker-compose.yml` |
+| `/api/salud` responde `ok:false` | La base todavía está arrancando | Esperen 20 s; `docker compose logs db` |
+| ESP32: `API HTTP: -1` | No alcanza la laptop | Misma red WiFi, IP correcta, y en Windows permitan el puerto 8080 en el Firewall (Windows Defender → Reglas de entrada → Puerto TCP 8080). Las redes de la universidad a veces bloquean conexiones entre dispositivos: usen el hotspot de un celular. |
+| ESP32: `API HTTP: 401` | Llaves distintas | `API_KEY` en `secretos.h` = `ESP32_API_KEY` en `.env`, luego `docker compose up -d api` |
+| ESP32: `entry_id: 0` | ThingSpeak: envío antes de 15 s | `INTERVALO_ENVIO_MS = 20000` |
+| La IP de la laptop cambió | DHCP del router | Actualicen `API_URL` o reserven la IP en el router |
+| Cambié la contraseña de la base y ya no conecta | MariaDB solo lee el `.env` la primera vez | `docker compose down -v` (borra los datos) y `docker compose up -d` |
+| "El canal es privado" | Falta Read API Key | Agréguenla o hagan público el canal |
+
+## Pruebas
+
+```bash
+node --test tests/*.test.js            # reglas del semáforo
+cd api && npm install && npm test      # validación de la API
+```
 
 ## Estructura
 
@@ -146,14 +204,20 @@ IoT-interface-design-/
 ├── docs/                    ← la página (Docker y GitHub Pages usan esta carpeta)
 │   ├── index.html
 │   ├── css/styles.css       ← paleta azul (neutro a oscuro)
-│   ├── js/config.js         ← Channel ID, campos, intervalo
+│   ├── js/config.js         ← fuente por defecto, Channel ID, campos
 │   ├── js/semaforo.js       ← reglas del semáforo
-│   ├── js/datos.js          ← ThingSpeak + modo demo
+│   ├── js/datos.js          ← ThingSpeak, API (MariaDB) y modo demo
 │   ├── js/app.js            ← pantallas e interacciones
-│   └── js/vendor/           ← Chart.js 4.6.1 (local, sin CDN)
-├── esp32/thingspeak_envio.ino
+│   └── js/vendor/           ← Chart.js 4.6.1 (local)
+├── api/                     ← API Node + Express para MariaDB
+│   ├── src/esquema.sql      ← tabla lecturas + vista resumen_diario
+│   ├── src/app.js · server.js · validar.js
+│   └── test/
+├── esp32/
+│   ├── envio_datos.ino      ← envío a ThingSpeak y a la API
+│   └── secretos.example.h
 ├── tests/semaforo.test.js
 ├── proyecto/                ← handoff.md, traceability.md, roadmap.md
-├── Dockerfile · docker-compose.yml · nginx.conf
+├── docker-compose.yml · Dockerfile · nginx.conf · .env.example
 └── README.md                ← esta guía
 ```
