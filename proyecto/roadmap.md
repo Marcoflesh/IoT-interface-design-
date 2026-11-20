@@ -23,7 +23,8 @@
 - [ ] Probar con muestras reales (Paso 5).
 
 ### Fase 4 · Publicación ⏳
-- [ ] Crear repo y activar GitHub Pages desde `/docs` (Paso 6).
+- [x] Subir el código al repo `IoT-interface-design-`.
+- [ ] Activar GitHub Pages desde `/docs` (Paso 6).
 - [ ] Poner Channel ID en `docs/js/config.js` para que arranque conectada.
 
 ### Fase 5 · Entregable de la actividad ⏳

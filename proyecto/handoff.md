@@ -1,6 +1,10 @@
 # Handoff · Web IoT · Monitoreo de calidad del agua (TC1004B)
 
-**Fecha:** 2026-11-20 · **Prompt:** construir la página (Docker + GitHub Pages + ThingSpeak) y definir el semáforo
+**Fecha:** 2026-11-20 · **Último prompt:** subir el proyecto a GitHub
+
+## Repositorio
+- https://github.com/Marcoflesh/IoT-interface-design- · rama `main` (6 commits iniciales).
+- GitHub Pages aún **no** está activado: Settings → Pages → `main` / `/docs`. URL esperada: https://marcoflesh.github.io/IoT-interface-design-/
 
 ## Qué se entregó
 - Página completa en `docs/`: 4 pantallas (Inicio, Historial, Alertas, Ajustes), HTML/CSS/JS sin frameworks, paleta azul de neutro a oscuro, navegación por botones (lateral en escritorio, inferior en móvil).
