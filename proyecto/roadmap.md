@@ -34,7 +34,8 @@
 
 ### Fase 3 · Conexión real ⏳ (equipo)
 - [ ] Recibir respuestas del banco de preguntas y ajustar el modelo del simulador.
-- [ ] En Fedora: seguir FEDORA.md Pasos 1 a 10.
+- [ ] En Fedora: seguir FEDORA.md Pasos 1 a 11.
+- [ ] Decidir camino A (ESP32 → ThingSpeak + API) o B (ESP32 → ThingSpeak + puente).
 - [ ] Borrar lecturas `esp32-sim` antes de medir con el real (hacer respaldo antes).
 - [ ] Crear `.env` y levantar `docker compose` (Guía, Pasos 1 y 2).
 - [ ] Crear canal ThingSpeak con field1 a field4 (Paso 3).

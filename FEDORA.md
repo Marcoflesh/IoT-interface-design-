@@ -249,6 +249,52 @@ Ahí puedes cambiar la muestra del vaso, ver la cadena completa (vaso → sensor
 mariadb -u root -p calidad_agua -e "DELETE FROM lecturas WHERE dispositivo = 'esp32-sim'"
 ```
 
+## Paso 11 · Conectar ThingSpeak con MariaDB (puente)
+
+Hay dos formas de que las lecturas lleguen a tu MariaDB:
+
+| Forma | Cómo | Cuándo conviene |
+|---|---|---|
+| **A. El ESP32 manda a los dos** | `enviarThingSpeak()` + `enviarAPI()` en el firmware | El ESP32 y la laptop están en la misma red y se ven |
+| **B. Puente ThingSpeak → MariaDB** | El ESP32 solo manda a ThingSpeak; un servicio en tu laptop copia las lecturas nuevas a MariaDB cada minuto | La red del Tec no deja que el ESP32 vea tu laptop, o quieres que el ESP32 funcione desde cualquier WiFi |
+
+El puente no duplica (usa el `entry_id` de ThingSpeak), conserva la hora original de cada lectura y, si tu laptop estuvo apagada, al prender trae lo que faltó (hasta las últimas 8000 entradas que guarda el canal). Las lecturas quedan con `origen = 'thingspeak'` y `dispositivo = 'esp32-1-ts'`.
+
+**1. Pon los datos del canal en tu `.env`:**
+
+```ini
+THINGSPEAK_CHANNEL_ID=2741234
+THINGSPEAK_READ_KEY=
+```
+
+(La Read API Key solo si el canal es privado. Las dos están en ThingSpeak, pestaña **API Keys**.)
+
+**2. En este orden** (la migración 003 necesita a root antes de reiniciar la API):
+
+```bash
+cd ~/IoT-interface-design-
+git pull
+bash scripts/fedora/preparar-mariadb.sh                              # aplica la migración 003
+docker compose -f docker-compose.fedora.yml up -d --build            # API con lo nuevo
+docker compose -f docker-compose.fedora.yml --profile thingspeak up -d --build
+docker logs -f calidad-agua-puente                                   # Ctrl+C para salir del log
+```
+
+Debe decir algo como `40 lectura(s) copiadas · último entry_id 40`.
+
+**3. Míralo en DBeaver o en la terminal:**
+
+```sql
+SELECT fecha, ph, turbidez, conductividad, ts_entry_id
+FROM lecturas WHERE origen = 'thingspeak' ORDER BY fecha DESC LIMIT 20;
+```
+
+En la página: **Ajustes → MariaDB → Dispositivo `esp32-1-ts`**.
+
+**Probarlo sin el ESP32:** pon tu Write API Key en `THINGSPEAK_WRITE_KEY` del `.env` y levanta el simulador (Paso 10). El ESP32 virtual publica en ThingSpeak y el puente lo copia a MariaDB: es la cadena completa sin hardware.
+
+> Si usas la forma A y el puente a la vez, cada lectura queda dos veces: una como `esp32-1` (directa) y otra como `esp32-1-ts` (copiada). No se mezclan, pero normalmente basta con una de las dos.
+
 ## Respaldos
 
 ```bash
@@ -268,6 +314,7 @@ Guarda los 14 más recientes. Haz uno antes de cada demo y antes de borrar datos
 | Revisar todo | `bash scripts/fedora/probar-conexion.sh` |
 | No abre localhost:8080 | `bash scripts/fedora/diagnosticar.sh` |
 | Simular el ESP32 | `docker compose -f docker-compose.fedora.yml --profile simulador up -d` |
+| Copiar ThingSpeak a MariaDB | `docker compose -f docker-compose.fedora.yml --profile thingspeak up -d` |
 | Respaldar la base | `bash scripts/fedora/respaldar.sh` |
 | Saber tu IP actual | `ip -4 route get 1.1.1.1` (el valor después de `src`) |
 
@@ -307,6 +354,7 @@ Actualiza la contraseña de root en DBeaver y en `DB_ROOT_PASSWORD` del `.env`.
 | Nadie escucha en 8080 aunque `web` dice "corriendo" y la API repite `ER_GET_CONNECTION_TIMEOUT` | Docker en modo rootless o Docker Desktop: la red `host` queda encerrada y no es la de Fedora | `sudo systemctl enable --now docker`, `systemctl --user disable --now docker docker.socket`, `unset DOCKER_HOST`, `docker context use default`, luego `docker compose -f docker-compose.fedora.yml up -d --build` |
 | http://localhost:8080 no abre | Contenedores sin levantar, Docker Desktop/Podman en vez de Docker Engine, puerto 8080 ocupado o SELinux | `bash scripts/fedora/diagnosticar.sh` |
 | `ERROR 1045 Access denied for user 'root'@'localhost'` | Contraseña de root de MariaDB incorrecta, o se escribió la de Linux | Pruébala sola con `mariadb -u root -p -e "SELECT 1"`. Si entra, ponla en `.env` como `DB_ROOT_PASSWORD` y repite el Paso 4. Si no la recuerdas: ver abajo |
+| Puente: `Falta THINGSPEAK_CHANNEL_ID` o `El canal es privado` | Faltan datos del canal en `.env` | Pon `THINGSPEAK_CHANNEL_ID` y, si es privado, `THINGSPEAK_READ_KEY`; luego `docker compose -f docker-compose.fedora.yml --profile thingspeak up -d --force-recreate puente` |
 | DBeaver: `Access denied for user 'agua'@'localhost'` | La contraseña de DBeaver no es igual a `DB_PASSWORD` del `.env` (o el script es anterior al 21 nov y guardó un comentario `# …` como parte de la contraseña) | `git pull` y `bash scripts/fedora/preparar-mariadb.sh`: vuelve a poner la contraseña de `DB_PASSWORD`. En DBeaver usa exactamente ese valor. Luego `docker compose -f docker-compose.fedora.yml up -d --force-recreate api` |
 | `SHOW TABLES` vacío / `No database selected` | No elegiste la base, o no se creó | `USE calidad_agua;` antes; si no existe, repite el Paso 4 |
 | `permission denied ... docker.sock` | Tu usuario no está en el grupo docker | `sudo usermod -aG docker $USER` y cierra sesión |

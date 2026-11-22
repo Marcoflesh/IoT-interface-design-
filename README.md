@@ -20,6 +20,8 @@ Todo lo local corre con un solo `docker compose up`:
 
 > 🐧 **¿Usas Fedora y ya tienes MariaDB instalada (terminal o DBeaver)?** Sigue **[FEDORA.md](FEDORA.md)**: usa tu MariaDB local y trae scripts que preparan todo en un comando.
 
+> 🔁 **¿El ESP32 solo puede mandar a ThingSpeak?** El puente (`api/src/puente-thingspeak.js`, perfil `thingspeak`) copia cada minuto las lecturas nuevas del canal a MariaDB sin duplicar. Ver [FEDORA.md, Paso 11](FEDORA.md).
+
 > 🧪 **¿Sin hardware todavía?** Hay un ESP32 virtual con física realista: un simulador de terminal (`simulador/simular-esp32.js`, también como perfil `simulador` de Docker) y una **página oculta** dentro del sitio. Para encontrarla: ↑ ↑ ↓ ↓ ← → ← → B A, o 5 toques en la gota del logo. Detalles en [FEDORA.md, Paso 10](FEDORA.md#paso-10--mientras-llega-el-hardware-esp32-virtual).
 
 La página tiene 4 pantallas: **Inicio** (semáforo y 3 variables), **Historial** (gráficas), **Alertas** (cambios de color) y **Ajustes** (fuente de datos y umbrales). Puede leer de **ThingSpeak**, de **MariaDB** (solo en localhost) o de un **modo demo** para presentar sin hardware.
@@ -220,8 +222,9 @@ IoT-interface-design-/
 │   ├── js/laboratorio.js    ← página oculta (easter egg)
 │   └── js/vendor/           ← Chart.js 4.6.1 (local)
 ├── api/                     ← API Node + Express para MariaDB
-│   ├── migraciones/         ← 001 lecturas · 002 dispositivos, calibraciones y diagnóstico
+│   ├── migraciones/         ← 001 lecturas · 002 dispositivos y diagnóstico · 003 ThingSpeak
 │   ├── src/app.js · server.js · validar.js · migrar.js
+│   ├── src/puente-thingspeak.js ← copia ThingSpeak → MariaDB
 │   └── test/
 ├── simulador/simular-esp32.js ← ESP32 virtual en la terminal
 ├── esp32/

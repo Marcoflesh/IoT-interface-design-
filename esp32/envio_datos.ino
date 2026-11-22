@@ -9,6 +9,9 @@
  *   field1 = pH · field2 = Turbidez (NTU) · field3 = Conductividad (µS/cm) · field4 = Temperatura (°C)
  *
  * Llaves y red: copien secretos.example.h como secretos.h.
+ *
+ * ¿La red no deja que el ESP32 vea la laptop? Usen solo enviarThingSpeak(): el puente
+ * ThingSpeak → MariaDB (FEDORA.md, Paso 11) copia las lecturas a la base desde la laptop.
  */
 
 #include <WiFi.h>

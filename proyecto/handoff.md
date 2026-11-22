@@ -1,6 +1,6 @@
 # Handoff · Web IoT · Monitoreo de calidad del agua (TC1004B)
 
-**Fecha:** 2026-11-21 · **Último prompt:** el diagnóstico detectó Docker Desktop
+**Fecha:** 2026-11-21 · **Último prompt:** cómo conectar ThingSpeak con MariaDB (Docker Engine ya funcionando)
 
 ## Repositorio
 - https://github.com/Marcoflesh/IoT-interface-design- · rama `main`.
@@ -32,6 +32,14 @@ Laboratorio oculto (navegador) ─► fuente "simulador" de la página (y opcion
 - `scripts/fedora/lib-mariadb.sh` (usado por `preparar-mariadb.sh` y `respaldar.sh`): usa `DB_ROOT_PASSWORD` del `.env`, si no `sudo mariadb`, si no la pide **una vez**; la pasa por `MYSQL_PWD` (no en la línea de comandos) y explica en español los errores 1045, 1698 y 2002.
 - FEDORA.md: las tres contraseñas (Linux, root de MariaDB, usuario `agua`), `USE calidad_agua;` antes de `SHOW TABLES`, y recuperación de la contraseña de root (probada: no borra datos y deja root con socket + contraseña).
 - Probado como usuario normal sin sudo con root solo por contraseña: contraseña mala → mensaje 1045 claro; correcta (escrita o en `.env`) → base creada; respaldo OK.
+
+## Puente ThingSpeak → MariaDB
+- Dos caminos: (A) el ESP32 manda a ThingSpeak y a la API; (B) el ESP32 solo manda a ThingSpeak y `api/src/puente-thingspeak.js` copia cada `PUENTE_INTERVALO` s (60) las lecturas nuevas a MariaDB. B evita depender de que el ESP32 vea la laptop (red del Tec).
+- Migración 003: `lecturas.origen` ('api' | 'thingspeak'), `ts_canal`, `ts_entry_id` + índice único (sin duplicados). Fecha = `created_at` de ThingSpeak (UTC). Dispositivo por defecto `esp32-1-ts`.
+- Primera vez o hueco: pide hasta 8000 entradas; luego solo las últimas 100. Valida rangos físicos con `validar.js`. Funciona con el usuario de permisos mínimos.
+- Perfil `thingspeak` en los dos compose; variables `THINGSPEAK_CHANNEL_ID`, `THINGSPEAK_READ_KEY`, `PUENTE_DISPOSITIVO`, `PUENTE_INTERVALO`.
+- Verificado: 13/13 pruebas de API (historial 150 con una inválida, sin duplicados, 3 nuevas sin pedir historial, recuperación de 300 tras hueco, hora original, usuario mínimo) y corrida real del servicio con `preparar-mariadb.sh` (aplicó 003) contra un ThingSpeak falso: 40 copiadas. No probado contra ThingSpeak real (el entorno no tiene salida a api.thingspeak.com).
+- Orden para Marco: `git pull` → `preparar-mariadb.sh` (003 como root) → `up -d --build` → `--profile thingspeak up -d`.
 
 ## Diagnóstico de localhost:8080
 - `scripts/fedora/diagnosticar.sh` (solo lee): Docker instalado/servicio/grupo, Podman o Docker Desktop (con red host no llega al Fedora), estado y logs de `calidad-agua-web` y `calidad-agua-api`, quién escucha en 8080, código HTTP de la página (403 → SELinux), `/api/salud` y SELinux. Probado en escenario sano y con fallas simuladas.
