@@ -73,12 +73,15 @@ conectar_root() {
   if [ "${#SUDO[@]}" -gt 0 ] && [ -t 0 ]; then
     echo "Probando root por socket con sudo (si pide \"[sudo] password\", es la contraseña de tu usuario de LINUX)…"
   fi
-  if "${SUDO[@]}" mariadb -u root -e "SELECT 1" >/dev/null 2>&1; then
+  if salida=$("${SUDO[@]}" mariadb -u root -e "SELECT 1" 2>&1); then
     ROOT=("${SUDO[@]}" mariadb -u root)
     ROOT_DUMP=("${SUDO[@]}" "$(command -v mariadb-dump || command -v mysqldump)" -u root)
     MODO_ROOT="sudo (socket)"
     return 0
   fi
+
+  # Sin terminal no se puede preguntar: explicar y salir en lugar de quedarse esperando.
+  [ -t 0 ] || explicar_error_root "$salida"
 
   # 3) Pedir la contraseña una vez
   if command -v systemctl >/dev/null && [ -t 0 ] && ! systemctl is-active --quiet mariadb 2>/dev/null; then
