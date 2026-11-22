@@ -1,13 +1,12 @@
 // API del monitoreo de calidad del agua.
-//   POST /api/lecturas   el ESP32 guarda una lectura (requiere header X-API-Key)
-//   GET  /api/lecturas   la página lee las últimas N lecturas (?limit=100)
-//   GET  /api/salud      estado de la API y de la conexión a MariaDB
+//   POST /api/lecturas      el ESP32 guarda una lectura (requiere header X-API-Key)
+//   GET  /api/lecturas      la página lee las últimas N (?limit=100&dispositivo=esp32-1)
+//   GET  /api/dispositivos  estado de cada ESP32 (real o simulado)
+//   GET  /api/salud         estado de la API y de la conexión a MariaDB
 
 const crypto = require("node:crypto");
-const fs = require("node:fs");
-const path = require("node:path");
 const express = require("express");
-const { validarLectura, leerLimite } = require("./validar");
+const { validarLectura, leerLimite, leerDispositivo } = require("./validar");
 
 function hash(texto) {
   return crypto.createHash("sha256").update(String(texto)).digest();
@@ -24,13 +23,7 @@ function aISO(fecha) {
   return fecha ? fecha.replace(" ", "T") + "Z" : null;
 }
 
-async function asegurarEsquema(pool) {
-  const sql = fs.readFileSync(path.join(__dirname, "esquema.sql"), "utf8")
-    .split("\n").filter((l) => !l.trim().startsWith("--")).join("\n");
-  for (const sentencia of sql.split(";").map((s) => s.trim()).filter(Boolean)) {
-    await pool.query(sentencia);
-  }
-}
+const ERROR_BD = { error: "La API no puede conectarse a MariaDB." };
 
 function crearApp(pool, apiKey) {
   const app = express();
@@ -48,30 +41,39 @@ function crearApp(pool, apiKey) {
       const filas = await pool.query("SELECT COUNT(*) AS n, MAX(fecha) AS ultima FROM lecturas");
       res.json({ ok: true, base: "MariaDB", lecturas: Number(filas[0].n), ultima: aISO(filas[0].ultima) });
     } catch (e) {
-      res.status(503).json({ ok: false, error: "La API no puede conectarse a MariaDB." });
+      res.status(503).json({ ok: false, error: ERROR_BD.error });
     }
   });
 
   app.get("/api/lecturas", async (req, res) => {
     const limite = leerLimite(req.query.limit);
+    const dispositivo = leerDispositivo(req.query.dispositivo);
+    if (dispositivo === undefined) return res.status(400).json({ error: "dispositivo inválido." });
     try {
       const filas = await pool.query(
-        "SELECT id, fecha, dispositivo, ph, turbidez, conductividad, temperatura " +
-        "FROM lecturas ORDER BY id DESC LIMIT ?",
-        [limite]
+        "SELECT id, fecha, dispositivo, ph, turbidez, conductividad, temperatura, rssi " +
+        "FROM lecturas " + (dispositivo ? "WHERE dispositivo = ? " : "") +
+        "ORDER BY id DESC LIMIT ?",
+        dispositivo ? [dispositivo, limite] : [limite]
       );
-      const lecturas = filas.reverse().map((f) => ({
-        id: f.id,
-        fecha: aISO(f.fecha),
-        dispositivo: f.dispositivo,
-        ph: f.ph,
-        turbidez: f.turbidez,
-        conductividad: f.conductividad,
-        temperatura: f.temperatura
-      }));
+      const lecturas = filas.reverse().map((f) => ({ ...f, fecha: aISO(f.fecha) }));
       res.json({ canal: "MariaDB", lecturas });
     } catch (e) {
-      res.status(503).json({ error: "La API no puede conectarse a MariaDB." });
+      res.status(503).json(ERROR_BD);
+    }
+  });
+
+  app.get("/api/dispositivos", async (req, res) => {
+    try {
+      const filas = await pool.query(
+        "SELECT id, descripcion, simulado, firmware, ultima_conexion, segundos_sin_datos, lecturas " +
+        "FROM estado_dispositivos ORDER BY ultima_conexion IS NULL, ultima_conexion DESC"
+      );
+      res.json({
+        dispositivos: filas.map((f) => ({ ...f, simulado: f.simulado === 1, ultima_conexion: aISO(f.ultima_conexion) }))
+      });
+    } catch (e) {
+      res.status(503).json(ERROR_BD);
     }
   });
 
@@ -79,17 +81,34 @@ function crearApp(pool, apiKey) {
     if (!llaveValida(req.get("X-API-Key"), apiKey)) {
       return res.status(401).json({ error: "Falta el header X-API-Key o es incorrecto." });
     }
-    const { lectura, error } = validarLectura(req.body);
+    const { lectura: l, error } = validarLectura(req.body);
     if (error) return res.status(400).json({ error });
+
+    const ip = (req.get("X-Real-IP") || req.socket.remoteAddress || "").slice(0, 45);
+    let conexion;
     try {
-      const r = await pool.query(
-        "INSERT INTO lecturas (fecha, dispositivo, ph, turbidez, conductividad, temperatura) " +
-        "VALUES (UTC_TIMESTAMP(3), ?, ?, ?, ?, ?)",
-        [lectura.dispositivo, lectura.ph, lectura.turbidez, lectura.conductividad, lectura.temperatura]
+      conexion = await pool.getConnection();
+      await conexion.beginTransaction();
+      // Registra el dispositivo la primera vez y actualiza su última conexión.
+      await conexion.query(
+        "INSERT INTO dispositivos (id, descripcion, simulado, firmware, ultima_conexion, ultima_ip) " +
+        "VALUES (?, 'Registrado automáticamente', ?, ?, UTC_TIMESTAMP(3), ?) " +
+        "ON DUPLICATE KEY UPDATE ultima_conexion = VALUES(ultima_conexion), ultima_ip = VALUES(ultima_ip), " +
+        "firmware = COALESCE(VALUES(firmware), firmware)",
+        [l.dispositivo, l.simulado ? 1 : 0, l.firmware, ip]
       );
+      const r = await conexion.query(
+        "INSERT INTO lecturas (fecha, dispositivo, ph, turbidez, conductividad, temperatura, " +
+        "rssi, ph_v, turbidez_v, conductividad_v) VALUES (UTC_TIMESTAMP(3), ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [l.dispositivo, l.ph, l.turbidez, l.conductividad, l.temperatura, l.rssi, l.ph_v, l.turbidez_v, l.conductividad_v]
+      );
+      await conexion.commit();
       res.status(201).json({ id: r.insertId });
     } catch (e) {
+      if (conexion) await conexion.rollback().catch(() => {});
       res.status(503).json({ error: "No se pudo guardar en MariaDB." });
+    } finally {
+      if (conexion) conexion.release();
     }
   });
 
@@ -106,4 +125,4 @@ function crearApp(pool, apiKey) {
   return app;
 }
 
-module.exports = { crearApp, asegurarEsquema, aISO };
+module.exports = { crearApp, aISO };

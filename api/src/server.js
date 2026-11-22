@@ -1,6 +1,7 @@
 // Arranque de la API: conecta a MariaDB, asegura el esquema y escucha en el puerto 3000.
 const mariadb = require("mariadb");
-const { crearApp, asegurarEsquema } = require("./app");
+const { crearApp } = require("./app");
+const { migrar } = require("./migrar");
 
 const PUERTO = Number(process.env.PORT || 3000);
 const HOST = process.env.HOST || "0.0.0.0";   // 127.0.0.1 en Fedora (red del equipo)
@@ -29,9 +30,13 @@ const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 async function iniciar() {
   for (let intento = 1; intento <= 15; intento++) {
     try {
-      await asegurarEsquema(pool);
+      await migrar(pool);
       break;
     } catch (e) {
+      if (/permisos de administrador|Falló la migración/.test(e.message)) {
+        console.error(e.message);
+        process.exit(1);
+      }
       console.log(`Esperando a MariaDB (intento ${intento}/15): ${e.code || e.message}`);
       if (intento === 15) process.exit(1);
       await esperar(2000);

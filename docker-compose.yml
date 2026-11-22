@@ -16,7 +16,7 @@ services:
       TZ: UTC
     volumes:
       - datos-mariadb:/var/lib/mysql                     # los datos sobreviven a docker compose down
-      - ./api/src/esquema.sql:/docker-entrypoint-initdb.d/01-esquema.sql:ro
+      - ./api/migraciones:/docker-entrypoint-initdb.d:ro     # primera vez; luego la API aplica las nuevas
     ports:
       - "127.0.0.1:3306:3306"
     healthcheck:

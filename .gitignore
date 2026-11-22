@@ -2,3 +2,4 @@
 node_modules/
 esp32/secretos.h
 .env
+respaldos/
