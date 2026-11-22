@@ -59,6 +59,10 @@ int enviarAPI(float ph, float turbidez, float conductividad, float temperatura) 
   cuerpo += ",\"turbidez\":"      + jsonNumero(turbidez, 1);
   cuerpo += ",\"conductividad\":" + jsonNumero(conductividad, 1);
   cuerpo += ",\"temperatura\":"   + jsonNumero(temperatura, 1);
+  cuerpo += ",\"rssi\":"          + String(WiFi.RSSI());     // intensidad WiFi (diagnóstico)
+  cuerpo += ",\"firmware\":\"v1.0.0\"";                     // súbanla cuando cambien el código
+  // Opcional: voltajes crudos para depurar calibraciones (columnas ph_v, turbidez_v, conductividad_v):
+  // cuerpo += ",\"ph_v\":" + jsonNumero(phVoltaje, 3);
   cuerpo += "}";
 
   HTTPClient http;
