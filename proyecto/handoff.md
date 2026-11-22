@@ -1,6 +1,6 @@
 # Handoff · Web IoT · Monitoreo de calidad del agua (TC1004B)
 
-**Fecha:** 2026-11-21 · **Último prompt:** paso a paso: .env, crear canal de ThingSpeak, conectar la página de GitHub y el puente
+**Fecha:** 2026-11-21 · **Último prompt:** ver que todo funciona desde MariaDB (terminal) en vez de DBeaver
 
 ## Repositorio
 - https://github.com/Marcoflesh/IoT-interface-design- · rama `main`.
@@ -32,6 +32,9 @@ Laboratorio oculto (navegador) ─► fuente "simulador" de la página (y opcion
 - `scripts/fedora/lib-mariadb.sh` (usado por `preparar-mariadb.sh` y `respaldar.sh`): usa `DB_ROOT_PASSWORD` del `.env`, si no `sudo mariadb`, si no la pide **una vez**; la pasa por `MYSQL_PWD` (no en la línea de comandos) y explica en español los errores 1045, 1698 y 2002.
 - FEDORA.md: las tres contraseñas (Linux, root de MariaDB, usuario `agua`), `USE calidad_agua;` antes de `SHOW TABLES`, y recuperación de la contraseña de root (probada: no borra datos y deja root con socket + contraseña).
 - Probado como usuario normal sin sudo con root solo por contraseña: contraseña mala → mensaje 1045 claro; correcta (escrita o en `.env`) → base creada; respaldo OK.
+
+## Ver datos desde la terminal
+- `scripts/fedora/ver-mariadb.sh [--seguir]`: con el usuario de la app muestra `estado_dispositivos`, últimas 10 lecturas en hora de México (CONVERT_TZ a -06:00) con el color del semáforo calculado en SQL, y el resumen de la última hora por dispositivo y origen. Probado contra MariaDB real.
 
 ## ThingSpeak de cero (guía FEDORA.md 11.1 a 11.6)
 - `.env.example` reordenado en 5 secciones, sin comentarios en línea; incluye `THINGSPEAK_WRITE_KEY` y `PUENTE_DISPOSITIVO`.

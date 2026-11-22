@@ -146,6 +146,8 @@ SELECT * FROM resumen_diario WHERE dispositivo = 'esp32-1';   -- promedios por d
 
 El usuario `agua` sirve para consultar. Para borrar o cambiar tablas entra como administrador: `mariadb -u root -p calidad_agua`.
 
+**Atajo:** `bash scripts/fedora/ver-mariadb.sh` muestra los dispositivos, las últimas 10 lecturas en hora de México con el color del semáforo y el resumen de la última hora. Con `--seguir` se actualiza cada 5 s (Ctrl+C para salir).
+
 > **`SHOW TABLES` no muestra nada o dice "No database selected":** primero elige la base. Entrando con `mariadb -u root -p` escribe `SHOW DATABASES;` (debe aparecer `calidad_agua`), luego `USE calidad_agua;` y ya `SHOW TABLES;`. Si `calidad_agua` no aparece, el Paso 4 no terminó: vuelve a correr el script y lee el mensaje en rojo.
 
 ## Paso 6 · Conectarte desde DBeaver
@@ -361,6 +363,7 @@ Guarda los 14 más recientes. Haz uno antes de cada demo y antes de borrar datos
 | Simular el ESP32 | `docker compose -f docker-compose.fedora.yml --profile simulador up -d` |
 | Copiar ThingSpeak a MariaDB | `docker compose -f docker-compose.fedora.yml --profile thingspeak up -d` |
 | Respaldar la base | `bash scripts/fedora/respaldar.sh` |
+| Ver los datos llegar (sin DBeaver) | `bash scripts/fedora/ver-mariadb.sh --seguir` |
 | Saber tu IP actual | `ip -4 route get 1.1.1.1` (el valor después de `src`) |
 
 Con `restart: unless-stopped` y Docker habilitado, la página y la API vuelven solas al reiniciar la laptop.
