@@ -3,7 +3,7 @@
 #   página → API → MariaDB, por localhost y por la IP de la red (la que usará el ESP32).
 #
 # Uso:  bash scripts/fedora/probar-conexion.sh
-#       bash scripts/fedora/probar-conexion.sh --limpiar   (borra las lecturas de prueba)
+#       bash scripts/fedora/probar-conexion.sh --limpiar   (cómo borrar las lecturas de prueba)
 set -uo pipefail
 
 cd "$(dirname "$0")/../.." || exit 1
@@ -20,7 +20,9 @@ DB_PASSWORD=$(leer DB_PASSWORD)
 
 if [ "${1:-}" = "--limpiar" ]; then
   MYSQL_PWD="$DB_PASSWORD" mariadb -h 127.0.0.1 -u "$DB_USER" "$DB_NAME" \
-    -e "DELETE FROM lecturas WHERE dispositivo = 'prueba-terminal'; SELECT ROW_COUNT() AS borradas;"
+    -e "UPDATE dispositivos SET descripcion = 'Pruebas de terminal (se pueden ignorar)' WHERE id = 'prueba-terminal';"
+  echo "Las lecturas de prueba llevan dispositivo = 'prueba-terminal'. Para borrarlas (como administrador):"
+  echo "  sudo mariadb $DB_NAME -e \"DELETE FROM lecturas WHERE dispositivo = 'prueba-terminal'\""
   exit 0
 fi
 
@@ -70,7 +72,7 @@ echo
 if [ "$FALLAS" -eq 0 ]; then
   echo "Todo listo. En esp32/secretos.h usa:  API_URL = \"http://$IP:8080/api/lecturas\""
   echo "Prueba también desde tu celular (misma WiFi): http://$IP:8080/api/salud"
-  echo "Para borrar las lecturas de prueba:  bash scripts/fedora/probar-conexion.sh --limpiar"
+  echo "Las lecturas de prueba quedaron con dispositivo = 'prueba-terminal' (--limpiar te dice cómo borrarlas)."
 else
   echo "$FALLAS prueba(s) fallaron. Revisa la sección 'Problemas comunes' de FEDORA.md."
   exit 1

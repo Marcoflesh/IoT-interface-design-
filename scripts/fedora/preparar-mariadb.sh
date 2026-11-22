@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Prepara la MariaDB local de Fedora para el proyecto:
 #   1) verifica que MariaDB esté corriendo
-#   2) crea la base y el usuario con los datos de tu .env
-#   3) crea la tabla lecturas y la vista resumen_diario
+#   2) crea la base y el usuario con los datos de tu .env, con permisos mínimos
+#      (la API solo puede leer, insertar y actualizar; no puede borrar ni crear tablas)
+#   3) aplica las migraciones pendientes de api/migraciones (como administrador)
 #   4) abre el puerto 8080 en el firewall para el ESP32
 #   5) te dice qué poner en DBeaver y en secretos.h del ESP32
 #
@@ -55,24 +56,39 @@ if command -v ss >/dev/null && ! ss -tln | grep -qE '[:.]3306\s'; then
   aviso "MariaDB no escucha en el puerto TCP 3306 (¿skip-networking?). Revisa /etc/my.cnf.d/mariadb-server.cnf"
 fi
 
-# ---------- 2) Base y usuario ----------
+# ---------- 2) Base y usuario con permisos mínimos ----------
 # Se manda por stdin para que la contraseña no aparezca en la lista de procesos.
+# REVOKE + GRANT deja los permisos exactos aunque antes tuviera ALL PRIVILEGES.
 "${ROOT[@]}" <<SQL
 CREATE DATABASE IF NOT EXISTS \`$DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASSWORD';
 CREATE USER IF NOT EXISTS '$DB_USER'@'127.0.0.1' IDENTIFIED BY '$DB_PASSWORD';
 ALTER USER '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASSWORD';
 ALTER USER '$DB_USER'@'127.0.0.1' IDENTIFIED BY '$DB_PASSWORD';
-GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'localhost';
-GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'127.0.0.1';
+REVOKE ALL PRIVILEGES, GRANT OPTION FROM '$DB_USER'@'localhost';
+REVOKE ALL PRIVILEGES, GRANT OPTION FROM '$DB_USER'@'127.0.0.1';
+GRANT SELECT, INSERT, UPDATE, SHOW VIEW ON \`$DB_NAME\`.* TO '$DB_USER'@'localhost';
+GRANT SELECT, INSERT, UPDATE, SHOW VIEW ON \`$DB_NAME\`.* TO '$DB_USER'@'127.0.0.1';
 FLUSH PRIVILEGES;
 SQL
-verde "Base '$DB_NAME' y usuario '$DB_USER' listos (solo puede entrar desde esta computadora)"
+verde "Base '$DB_NAME' y usuario '$DB_USER' listos (solo desde esta computadora; leer, insertar y actualizar)"
 
-# ---------- 3) Tabla y vista (entrando igual que la API: TCP 127.0.0.1) ----------
-MYSQL_PWD="$DB_PASSWORD" mariadb -h 127.0.0.1 -P 3306 -u "$DB_USER" "$DB_NAME" < api/src/esquema.sql
-TOTAL=$(MYSQL_PWD="$DB_PASSWORD" mariadb -h 127.0.0.1 -u "$DB_USER" "$DB_NAME" -N -e "SELECT COUNT(*) FROM lecturas")
-verde "Tabla 'lecturas' y vista 'resumen_diario' listas ($TOTAL lecturas guardadas)"
+# ---------- 3) Migraciones (como administrador) ----------
+APLICADAS=$("${ROOT[@]}" -N "$DB_NAME" -e "SELECT version FROM schema_migraciones" 2>/dev/null || true)
+for archivo in api/migraciones/[0-9][0-9][0-9]_*.sql; do
+  version=$(basename "$archivo" | cut -c1-3)
+  if grep -qx "$version" <<<"$APLICADAS"; then
+    verde "Migración $(basename "$archivo") ya estaba aplicada"
+  else
+    "${ROOT[@]}" "$DB_NAME" < "$archivo"
+    verde "Migración aplicada: $(basename "$archivo")"
+  fi
+done
+
+# Comprobación entrando igual que la API (TCP 127.0.0.1, usuario de la app)
+TOTAL=$(MYSQL_PWD="$DB_PASSWORD" mariadb -h 127.0.0.1 -P 3306 -u "$DB_USER" "$DB_NAME" -N -e "SELECT COUNT(*) FROM lecturas")
+DISPOSITIVOS=$(MYSQL_PWD="$DB_PASSWORD" mariadb -h 127.0.0.1 -u "$DB_USER" "$DB_NAME" -N -e "SELECT GROUP_CONCAT(id) FROM dispositivos")
+verde "El usuario '$DB_USER' entra por 127.0.0.1: $TOTAL lecturas, dispositivos: $DISPOSITIVOS"
 
 # ---------- 4) Firewall para el ESP32 ----------
 if command -v firewall-cmd >/dev/null && sudo firewall-cmd --state >/dev/null 2>&1; then
@@ -99,7 +115,11 @@ DBeaver (Nueva conexión → MariaDB):
   Usuario: $DB_USER   Contraseña: la de DB_PASSWORD en .env
 
 Terminal:
-  mariadb -h 127.0.0.1 -u $DB_USER -p $DB_NAME
+  mariadb -h 127.0.0.1 -u $DB_USER -p $DB_NAME     (lectura y consultas)
+  sudo mariadb $DB_NAME                          (administrador: borrar, cambiar tablas)
+
+Respaldo de la base:
+  bash scripts/fedora/respaldar.sh
 
 Siguiente paso, levantar la página y la API:
   docker compose -f docker-compose.fedora.yml up -d --build
