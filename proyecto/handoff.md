@@ -1,6 +1,6 @@
 # Handoff · Web IoT · Monitoreo de calidad del agua (TC1004B)
 
-**Fecha:** 2026-11-21 · **Último prompt:** http://localhost:8080 no abre en Fedora
+**Fecha:** 2026-11-21 · **Último prompt:** diagnóstico: API con ER_GET_CONNECTION_TIMEOUT y nada en el puerto 8080
 
 ## Repositorio
 - https://github.com/Marcoflesh/IoT-interface-design- · rama `main`.
@@ -36,7 +36,9 @@ Laboratorio oculto (navegador) ─► fuente "simulador" de la página (y opcion
 ## Diagnóstico de localhost:8080
 - `scripts/fedora/diagnosticar.sh` (solo lee): Docker instalado/servicio/grupo, Podman o Docker Desktop (con red host no llega al Fedora), estado y logs de `calidad-agua-web` y `calidad-agua-api`, quién escucha en 8080, código HTTP de la página (403 → SELinux), `/api/salud` y SELinux. Probado en escenario sano y con fallas simuladas.
 - `lib-mariadb.sh`: sin terminal ya no se queda esperando la contraseña; explica el error y sale.
-- Pendiente: Marco corre el diagnóstico y comparte la salida si no queda claro.
+- Salida de Marco: `web` corriendo pero nada escucha en 8080; la API repite `ER_GET_CONNECTION_TIMEOUT` hacia 127.0.0.1:3306; SELinux Enforcing. Hipótesis principal: Docker rootless (o Desktop/Podman), donde la red host queda dentro de RootlessKit. Se descartó recomendar un booleano de SELinux (RHEL 8 quitó `container_can_connect_any`).
+- `diagnosticar.sh` ahora detecta rootless y contexto, red de cada contenedor (compose equivocado), si MariaDB escucha en 3306 y prueba TCP desde dentro de la API (OK / ECONNREFUSED / EACCES / ETIMEDOUT) con el arreglo de cada caso.
+- Pendiente: Marco corre `git pull` + diagnóstico y comparte la sección 1 y 2b.
 
 ## Contraseña de `agua` (DBeaver 1045)
 - Causa: `leer_env` tomaba el comentario al final de la línea (`DB_PASSWORD=clave   # nota`) como parte del valor; el ejemplo de FEDORA.md tenía uno. El usuario `agua` quedaba con otra contraseña.

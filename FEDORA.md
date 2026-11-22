@@ -32,7 +32,11 @@ sudo usermod -aG docker $USER
 
 Si pide aceptar la llave GPG, la huella debe ser `060A 61C5 1B55 8A7F 742B 77AA C52F EB6B 621E 9F35`.
 
-**Cierra sesión y vuelve a entrar** (o reinicia) para que tu usuario use Docker sin `sudo`. Verifica:
+**Cierra sesión y vuelve a entrar** (o reinicia) para que tu usuario use Docker sin `sudo`.
+
+> Usa este Docker "normal". **No** uses Docker *rootless* ni Docker Desktop: en esos dos la red `host` no es la de tu Fedora, la página no aparece en `localhost:8080` y la API no ve tu MariaDB.
+
+Verifica:
 
 ```bash
 docker run --rm hello-world
@@ -298,6 +302,7 @@ Actualiza la contraseña de root en DBeaver y en `DB_ROOT_PASSWORD` del `.env`.
 
 | Síntoma | Causa | Solución |
 |---|---|---|
+| Nadie escucha en 8080 aunque `web` dice "corriendo" y la API repite `ER_GET_CONNECTION_TIMEOUT` | Docker en modo rootless o Docker Desktop: la red `host` queda encerrada y no es la de Fedora | `sudo systemctl enable --now docker`, `systemctl --user disable --now docker docker.socket`, `unset DOCKER_HOST`, `docker context use default`, luego `docker compose -f docker-compose.fedora.yml up -d --build` |
 | http://localhost:8080 no abre | Contenedores sin levantar, Docker Desktop/Podman en vez de Docker Engine, puerto 8080 ocupado o SELinux | `bash scripts/fedora/diagnosticar.sh` |
 | `ERROR 1045 Access denied for user 'root'@'localhost'` | Contraseña de root de MariaDB incorrecta, o se escribió la de Linux | Pruébala sola con `mariadb -u root -p -e "SELECT 1"`. Si entra, ponla en `.env` como `DB_ROOT_PASSWORD` y repite el Paso 4. Si no la recuerdas: ver abajo |
 | DBeaver: `Access denied for user 'agua'@'localhost'` | La contraseña de DBeaver no es igual a `DB_PASSWORD` del `.env` (o el script es anterior al 21 nov y guardó un comentario `# …` como parte de la contraseña) | `git pull` y `bash scripts/fedora/preparar-mariadb.sh`: vuelve a poner la contraseña de `DB_PASSWORD`. En DBeaver usa exactamente ese valor. Luego `docker compose -f docker-compose.fedora.yml up -d --force-recreate api` |
