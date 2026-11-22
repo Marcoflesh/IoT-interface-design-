@@ -1,6 +1,6 @@
 # Handoff · Web IoT · Monitoreo de calidad del agua (TC1004B)
 
-**Fecha:** 2026-11-21 · **Último prompt:** base de datos como la haría un senior, banco de preguntas para el encargado del ESP32 y página oculta con ESP32 simulado
+**Fecha:** 2026-11-21 · **Último prompt:** error 1045 (Access denied for user root@localhost) al preparar MariaDB en Fedora
 
 ## Repositorio
 - https://github.com/Marcoflesh/IoT-interface-design- · rama `main`.
@@ -25,6 +25,12 @@ Laboratorio oculto (navegador) ─► fuente "simulador" de la página (y opcion
 | Tabla `calibraciones` | Historial de calibraciones por sensor |
 | Vistas `resumen_diario` (por dispositivo) y `estado_dispositivos` | Reporte y "¿quién dejó de mandar datos?" |
 | `respaldar.sh` con rotación de 14 | Respaldo antes de demos y de borrar datos |
+
+## Acceso de administrador a MariaDB (error 1045)
+- Causa: el root de MariaDB de Marco tiene contraseña (entra con `-p` y DBeaver); el script asumía `sudo mariadb` por socket y pedía la contraseña varias veces.
+- `scripts/fedora/lib-mariadb.sh` (usado por `preparar-mariadb.sh` y `respaldar.sh`): usa `DB_ROOT_PASSWORD` del `.env`, si no `sudo mariadb`, si no la pide **una vez**; la pasa por `MYSQL_PWD` (no en la línea de comandos) y explica en español los errores 1045, 1698 y 2002.
+- FEDORA.md: las tres contraseñas (Linux, root de MariaDB, usuario `agua`), `USE calidad_agua;` antes de `SHOW TABLES`, y recuperación de la contraseña de root (probada: no borra datos y deja root con socket + contraseña).
+- Probado como usuario normal sin sudo con root solo por contraseña: contraseña mala → mensaje 1045 claro; correcta (escrita o en `.env`) → base creada; respaldo OK.
 
 ## ESP32 virtual
 - `docs/js/esp32-virtual.js`: modelo físico compartido. Curvas PH-4502C (Nernst, ganancia x3), SEN0189 (polinomio DFRobot), Gravity TDS (cúbica DFRobot, saturación 2.3 V), DS18B20; divisores de PCB supuestos; ADC del ESP32 a 11 dB con ruido, no linealidad y 12 bits; sobremuestreo; mediana de 5 en turbidez; compensación por temperatura; calibraciones; fallas.

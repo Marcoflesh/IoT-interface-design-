@@ -59,14 +59,17 @@ python3 -c "import secrets; print(secrets.token_hex(16))"    # copia el resultad
 nano .env                                                      # o: gedit .env / code .env
 ```
 
-Llena así (`DB_ROOT_PASSWORD` no se usa en esta variante):
+Llena así:
 
 ```ini
+DB_ROOT_PASSWORD=la-contraseña-de-root-de-TU-MariaDB   # la que usas en DBeaver para root; déjala vacía si root entra con sudo
 DB_NAME=calidad_agua
 DB_USER=agua
-DB_PASSWORD=una-clave-tuya-sin-comillas-simples
+DB_PASSWORD=una-clave-nueva-para-la-api-sin-comillas-simples
 ESP32_API_KEY=el-resultado-del-comando-de-python
 ```
+
+Son **tres contraseñas distintas**: la de tu usuario de Linux (la pide `sudo`), la de **root de MariaDB** (`DB_ROOT_PASSWORD`, ya la tienes) y la del usuario **agua** que se va a crear (`DB_PASSWORD`, la inventas ahora).
 
 ## Paso 4 · Preparar MariaDB (un comando)
 
@@ -76,7 +79,7 @@ bash scripts/fedora/preparar-mariadb.sh
 
 El script:
 1. Revisa que MariaDB esté corriendo (si no, lo inicia).
-2. Entra como root con `sudo mariadb` (en Fedora root usa autenticación por socket; si tu root tiene contraseña, te la pide).
+2. Entra como root de MariaDB: con `DB_ROOT_PASSWORD` del `.env` si la pusiste; si no, con `sudo mariadb`; y si eso tampoco funciona, te pide la contraseña de root **una sola vez** (el texto dice "Contraseña de root de MariaDB": no es la de Linux).
 3. Crea la base `calidad_agua` y el usuario `agua`, que **solo entra desde tu laptop** y solo puede **leer, insertar y actualizar** (no borra ni cambia tablas).
 4. Aplica las migraciones de `api/migraciones/` como administrador: tablas `lecturas`, `dispositivos`, `calibraciones`, `schema_migraciones` y vistas `resumen_diario` y `estado_dispositivos`.
 5. Abre el puerto **8080** en firewalld para que el ESP32 llegue.
@@ -101,7 +104,7 @@ Puedes correrlo cuantas veces quieras; si cambias la contraseña en `.env`, vuel
 <summary>Lo mismo, a mano (por si quieres ver qué hace)</summary>
 
 ```bash
-sudo mariadb
+mariadb -u root -p          # o: sudo mariadb   (si root entra por socket)
 ```
 ```sql
 CREATE DATABASE IF NOT EXISTS calidad_agua CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -113,7 +116,7 @@ FLUSH PRIVILEGES;
 EXIT;
 ```
 ```bash
-for f in api/migraciones/*.sql; do sudo mariadb calidad_agua < "$f"; done
+for f in api/migraciones/*.sql; do mariadb -u root -p calidad_agua < "$f"; done
 sudo firewall-cmd --permanent --add-port=8080/tcp && sudo firewall-cmd --reload
 ```
 Se crean dos usuarios (`localhost` y `127.0.0.1`) porque la terminal entra por socket y la API entra por TCP.
@@ -131,7 +134,9 @@ SELECT * FROM estado_dispositivos;                    -- quién está mandando d
 SELECT * FROM resumen_diario WHERE dispositivo = 'esp32-1';   -- promedios por día del ESP32 real
 ```
 
-El usuario `agua` sirve para consultar. Para borrar o cambiar tablas entra como administrador: `sudo mariadb calidad_agua`.
+El usuario `agua` sirve para consultar. Para borrar o cambiar tablas entra como administrador: `mariadb -u root -p calidad_agua`.
+
+> **`SHOW TABLES` no muestra nada o dice "No database selected":** primero elige la base. Entrando con `mariadb -u root -p` escribe `SHOW DATABASES;` (debe aparecer `calidad_agua`), luego `USE calidad_agua;` y ya `SHOW TABLES;`. Si `calidad_agua` no aparece, el Paso 4 no terminó: vuelve a correr el script y lee el mensaje en rojo.
 
 ## Paso 6 · Conectarte desde DBeaver
 
@@ -166,7 +171,7 @@ bash scripts/fedora/probar-conexion.sh
 Revisa contenedores, página, API, MariaDB, que se rechace una llave falsa y que responda por la **IP de tu red**. Al final te dice el `API_URL` exacto para el ESP32. La lectura de prueba aparece en DBeaver con `dispositivo = prueba-terminal`. Para borrarla (como administrador):
 
 ```bash
-sudo mariadb calidad_agua -e "DELETE FROM lecturas WHERE dispositivo = 'prueba-terminal'"
+mariadb -u root -p calidad_agua -e "DELETE FROM lecturas WHERE dispositivo = 'prueba-terminal'"
 ```
 
 Prueba también desde **tu celular conectado a la misma WiFi**: abre `http://IP-DE-TU-LAPTOP:8080/api/salud`. Si ahí carga, el ESP32 también va a llegar.
@@ -225,7 +230,7 @@ Ahí puedes cambiar la muestra del vaso, ver la cadena completa (vaso → sensor
 **Borrar los datos simulados** antes de medir con el ESP32 real:
 
 ```bash
-sudo mariadb calidad_agua -e "DELETE FROM lecturas WHERE dispositivo = 'esp32-sim'"
+mariadb -u root -p calidad_agua -e "DELETE FROM lecturas WHERE dispositivo = 'esp32-sim'"
 ```
 
 ## Respaldos
@@ -253,10 +258,37 @@ Con `restart: unless-stopped` y Docker habilitado, la página y la API vuelven s
 
 ---
 
+## Olvidé la contraseña de root de MariaDB
+
+Esto reinicia MariaDB sin revisar contraseñas por un momento (solo desde tu laptop) y te deja poner una nueva. **No borra datos.**
+
+```bash
+printf '[mysqld]\nskip-grant-tables\nskip-networking\n' | sudo tee /etc/my.cnf.d/zz-recuperar.cnf
+sudo systemctl restart mariadb
+mariadb -u root
+```
+```sql
+FLUSH PRIVILEGES;
+-- root podrá entrar con sudo (sin contraseña) Y con la nueva contraseña:
+ALTER USER 'root'@'localhost' IDENTIFIED VIA unix_socket OR mysql_native_password USING PASSWORD('TU-NUEVA-CLAVE');
+EXIT;
+```
+```bash
+sudo rm /etc/my.cnf.d/zz-recuperar.cnf          # importante: quitar el modo sin contraseñas
+sudo systemctl restart mariadb
+mariadb -u root -p -e "SELECT 1"                # prueba con la nueva
+```
+
+Actualiza la contraseña de root en DBeaver y en `DB_ROOT_PASSWORD` del `.env`.
+
+> Aunque sí recuerdes tu contraseña, ese `ALTER USER` es útil: deja que root entre tanto con `sudo mariadb` como con contraseña.
+
 ## Problemas comunes
 
 | Síntoma | Causa | Solución |
 |---|---|---|
+| `ERROR 1045 Access denied for user 'root'@'localhost'` | Contraseña de root de MariaDB incorrecta, o se escribió la de Linux | Pruébala sola con `mariadb -u root -p -e "SELECT 1"`. Si entra, ponla en `.env` como `DB_ROOT_PASSWORD` y repite el Paso 4. Si no la recuerdas: ver abajo |
+| `SHOW TABLES` vacío / `No database selected` | No elegiste la base, o no se creó | `USE calidad_agua;` antes; si no existe, repite el Paso 4 |
 | `permission denied ... docker.sock` | Tu usuario no está en el grupo docker | `sudo usermod -aG docker $USER` y cierra sesión |
 | Docker no arranca: `failed to find iptables` | Fedora usa nftables | `sudo alternatives --set iptables /usr/bin/iptables-nft && sudo systemctl restart docker` |
 | `docker compose: command not found` | Falta el plugin | `sudo dnf install docker-compose-plugin` |

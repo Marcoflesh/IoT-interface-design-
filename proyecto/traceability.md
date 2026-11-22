@@ -41,4 +41,5 @@
 | R26 | Usuario | Página oculta tipo easter egg con sensores simulados lo más realista posible | `laboratorio.js` + `esp32-virtual.js` (curvas de módulos, ADC, firmware, fallas) | ✅ Hecho |
 | R27 | Usuario | Página funcionando sin hardware | Fuente "simulador" en toda la página, con aviso de simulación | ✅ Hecho (también en GitHub Pages) |
 | R28 | Usuario | Qué API keys se necesitan | Tabla de llaves en handoff y respuesta | ✅ Hecho |
+| R29 | Usuario | Resolver error 1045 de root al preparar MariaDB en Fedora | `lib-mariadb.sh`, FEDORA.md (contraseñas, SHOW TABLES, recuperación) | ✅ Hecho (reproducido y probado) |
 | R20 | Spec §6 Fase 6 | Analizar datos y tendencias | Vista `resumen_diario`, consultas SQL, Adminer, exportar CSV | ✅ Hecho |
