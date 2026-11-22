@@ -260,16 +260,48 @@ Hay dos formas de que las lecturas lleguen a tu MariaDB:
 
 El puente no duplica (usa el `entry_id` de ThingSpeak), conserva la hora original de cada lectura y, si tu laptop estuvo apagada, al prender trae lo que faltó (hasta las últimas 8000 entradas que guarda el canal). Las lecturas quedan con `origen = 'thingspeak'` y `dispositivo = 'esp32-1-ts'`.
 
-**1. Pon los datos del canal en tu `.env`:**
+### 11.1 · Crear el canal en ThingSpeak
+
+1. Entra a **thingspeak.mathworks.com** y da **Sign In** con tu cuenta de MathWorks (o crea una; puede ser con tu correo del Tec).
+2. **Channels → My Channels → New Channel**.
+3. **Name:** `Calidad del agua` · **Description:** opcional.
+4. Marca **Field 1 a Field 4** y escribe sus nombres **en este orden** (la página, el puente y el firmware dependen de él):
+   - Field 1: `pH`
+   - Field 2: `Turbidez`
+   - Field 3: `Conductividad`
+   - Field 4: `Temperatura`
+5. **Save Channel** (abajo).
+6. El **Channel ID** es el número que aparece arriba en la página del canal.
+7. Pestaña **API Keys**: ahí están la **Write API Key** (para escribir) y la **Read API Key** (para leer).
+8. Pestaña **Sharing**: elige **Share channel view with everyone** (canal público). Así la página de GitHub no necesita Read API Key.
+
+> **Recomendación:** crea **dos canales** (el plan gratis permite 4): `Calidad del agua · pruebas` para el simulador y `Calidad del agua` para el ESP32 real. Así nunca mezclas datos simulados con reales ni tienes que borrar nada después.
+
+### 11.2 · Llenar el `.env`
 
 ```ini
 THINGSPEAK_CHANNEL_ID=2741234
 THINGSPEAK_READ_KEY=
+THINGSPEAK_WRITE_KEY=XXXXXXXXXXXXXXXX
+PUENTE_DISPOSITIVO=esp32-sim-ts
+PUENTE_INTERVALO=60
 ```
 
-(La Read API Key solo si el canal es privado. Las dos están en ThingSpeak, pestaña **API Keys**.)
+- `THINGSPEAK_READ_KEY` vacía si el canal es público.
+- `THINGSPEAK_WRITE_KEY`: solo la usan el simulador y la prueba de escritura. La del ESP32 real va en `secretos.h`.
+- `PUENTE_DISPOSITIVO=esp32-sim-ts` mientras uses el canal de pruebas; con el canal real, `esp32-1-ts`.
 
-**2. En este orden** (la migración 003 necesita a root antes de reiniciar la API):
+### 11.3 · Probar el canal desde la terminal
+
+```bash
+bash scripts/fedora/probar-thingspeak.sh --escribir
+```
+
+Escribe una lectura de prueba, la vuelve a leer y revisa que los 4 campos estén en el orden correcto.
+
+### 11.4 · Encender el puente
+
+En este orden (la migración 003 necesita a root antes de reiniciar la API):
 
 ```bash
 cd ~/IoT-interface-design-
@@ -282,7 +314,7 @@ docker logs -f calidad-agua-puente                                   # Ctrl+C pa
 
 Debe decir algo como `40 lectura(s) copiadas · último entry_id 40`.
 
-**3. Míralo en DBeaver o en la terminal:**
+**Míralo en DBeaver o en la terminal:**
 
 ```sql
 SELECT fecha, ph, turbidez, conductividad, ts_entry_id
@@ -291,7 +323,20 @@ FROM lecturas WHERE origen = 'thingspeak' ORDER BY fecha DESC LIMIT 20;
 
 En la página: **Ajustes → MariaDB → Dispositivo `esp32-1-ts`**.
 
-**Probarlo sin el ESP32:** pon tu Write API Key en `THINGSPEAK_WRITE_KEY` del `.env` y levanta el simulador (Paso 10). El ESP32 virtual publica en ThingSpeak y el puente lo copia a MariaDB: es la cadena completa sin hardware.
+### 11.5 · La página de GitHub con tu canal
+
+```bash
+bash scripts/configurar-pagina.sh      # pone el Channel ID (y la Read Key si es privado) en docs/js/config.js
+git add docs/js/config.js
+git commit -m "Página: leer el canal de ThingSpeak"
+git push
+```
+
+En 1 o 2 minutos https://marcoflesh.github.io/IoT-interface-design-/ arranca leyendo tu canal. Si ya habías guardado otra fuente en **Ajustes** de ese navegador, esa tiene prioridad: elige **ThingSpeak** en Ajustes y **Guardar**. Para volver al demo: `bash scripts/configurar-pagina.sh --demo`.
+
+### 11.6 · Probarlo todo sin el ESP32
+
+ con la Write API Key del canal de pruebas en `THINGSPEAK_WRITE_KEY`, levanta el simulador: `docker compose -f docker-compose.fedora.yml --profile simulador up -d`. El ESP32 virtual publica en ThingSpeak y el puente lo copia a MariaDB: es la cadena completa sin hardware.
 
 > Si usas la forma A y el puente a la vez, cada lectura queda dos veces: una como `esp32-1` (directa) y otra como `esp32-1-ts` (copiada). No se mezclan, pero normalmente basta con una de las dos.
 

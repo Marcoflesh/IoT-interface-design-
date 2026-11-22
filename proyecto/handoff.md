@@ -1,6 +1,6 @@
 # Handoff · Web IoT · Monitoreo de calidad del agua (TC1004B)
 
-**Fecha:** 2026-11-21 · **Último prompt:** cómo conectar ThingSpeak con MariaDB (Docker Engine ya funcionando)
+**Fecha:** 2026-11-21 · **Último prompt:** paso a paso: .env, crear canal de ThingSpeak, conectar la página de GitHub y el puente
 
 ## Repositorio
 - https://github.com/Marcoflesh/IoT-interface-design- · rama `main`.
@@ -32,6 +32,13 @@ Laboratorio oculto (navegador) ─► fuente "simulador" de la página (y opcion
 - `scripts/fedora/lib-mariadb.sh` (usado por `preparar-mariadb.sh` y `respaldar.sh`): usa `DB_ROOT_PASSWORD` del `.env`, si no `sudo mariadb`, si no la pide **una vez**; la pasa por `MYSQL_PWD` (no en la línea de comandos) y explica en español los errores 1045, 1698 y 2002.
 - FEDORA.md: las tres contraseñas (Linux, root de MariaDB, usuario `agua`), `USE calidad_agua;` antes de `SHOW TABLES`, y recuperación de la contraseña de root (probada: no borra datos y deja root con socket + contraseña).
 - Probado como usuario normal sin sudo con root solo por contraseña: contraseña mala → mensaje 1045 claro; correcta (escrita o en `.env`) → base creada; respaldo OK.
+
+## ThingSpeak de cero (guía FEDORA.md 11.1 a 11.6)
+- `.env.example` reordenado en 5 secciones, sin comentarios en línea; incluye `THINGSPEAK_WRITE_KEY` y `PUENTE_DISPOSITIVO`.
+- `scripts/fedora/probar-thingspeak.sh [--escribir]`: valida Channel ID, escribe una lectura de prueba (Write Key), lee el canal, avisa si es privado sin Read Key y revisa el orden de los 4 campos.
+- `scripts/configurar-pagina.sh [--demo]`: pone `fuente: "thingspeak"`, Channel ID y Read Key (si es privado) en `docs/js/config.js`; nunca la Write Key. Probado ida y vuelta (queda idéntico con `--demo`).
+- Recomendación: dos canales (pruebas para el simulador con `PUENTE_DISPOSITIVO=esp32-sim-ts`, y real con `esp32-1-ts`) para no mezclar datos.
+- No verificado aquí: llamadas reales a api.thingspeak.com (sin salida desde el entorno).
 
 ## Puente ThingSpeak → MariaDB
 - Dos caminos: (A) el ESP32 manda a ThingSpeak y a la API; (B) el ESP32 solo manda a ThingSpeak y `api/src/puente-thingspeak.js` copia cada `PUENTE_INTERVALO` s (60) las lecturas nuevas a MariaDB. B evita depender de que el ESP32 vea la laptop (red del Tec).
