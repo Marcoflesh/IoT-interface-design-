@@ -40,11 +40,15 @@
         <li><a class="nav__boton" href="#ajustes" data-ruta="ajustes">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
           <span>Ajustes</span></a></li>
+        <li id="nav-lab" hidden><a class="nav__boton nav__boton--lab" href="#laboratorio" data-ruta="laboratorio">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6"/><path d="M10 3v6l-5.5 9.5A1.6 1.6 0 0 0 5.9 21h12.2a1.6 1.6 0 0 0 1.4-2.5L14 9V3"/><path d="M7.5 15h9"/></svg>
+          <span>Laboratorio</span></a></li>
       </ul>
       <p class="nav__fuente" id="nav-fuente">Fuente: demo</p>
     </nav>
 
     <main id="contenido" class="contenido" tabindex="-1">
+      <p class="aviso-sim" id="aviso-sim" hidden><strong>Simulación</strong> · Los datos vienen del ESP32 virtual del laboratorio, no de sensores reales.</p>
 
       <!-- ===================== 1. INICIO ===================== -->
       <section class="pantalla" id="pantalla-inicio" data-pantalla="inicio" aria-labelledby="t-inicio">
@@ -174,6 +178,7 @@
               <label class="radio"><input type="radio" name="fuente" value="demo"> <span><strong>Demo</strong> · datos simulados para presentar sin hardware</span></label>
               <label class="radio"><input type="radio" name="fuente" value="thingspeak"> <span><strong>ThingSpeak</strong> · lecturas reales del ESP32 (funciona en GitHub Pages)</span></label>
               <label class="radio"><input type="radio" name="fuente" value="api"> <span><strong>MariaDB</strong> · base de datos propia (solo en localhost con Docker)</span></label>
+              <label class="radio" data-solo-lab hidden><input type="radio" name="fuente" value="simulador"> <span><strong>ESP32 virtual</strong> · sensores simulados del laboratorio (funciona en cualquier lado)</span></label>
             </div>
             <div class="campos">
               <label class="campo">Channel ID
@@ -182,6 +187,10 @@
               <label class="campo">Read API Key
                 <input type="text" name="readApiKey" autocomplete="off" spellcheck="false" placeholder="ABCD1234EFGH5678…">
                 <span class="campo__ayuda">Déjala vacía si el canal es público.</span>
+              </label>
+              <label class="campo">Dispositivo en MariaDB
+                <input type="text" name="apiDispositivo" autocomplete="off" spellcheck="false" placeholder="vacío = todos">
+                <span class="campo__ayuda">esp32-1 = el real · esp32-sim = el simulador.</span>
               </label>
               <label class="campo">Actualizar cada (segundos)
                 <input type="number" name="intervaloSeg" min="15" max="600" step="1">
@@ -214,16 +223,132 @@
         </form>
       </section>
 
+      <!-- ===================== 5. LABORATORIO (oculto) ===================== -->
+      <section class="pantalla" id="pantalla-laboratorio" data-pantalla="laboratorio" aria-labelledby="t-lab" hidden>
+        <header class="encabezado">
+          <div>
+            <p class="lab-etiqueta">Página oculta</p>
+            <h1 id="t-lab">Laboratorio · ESP32 virtual</h1>
+            <p class="encabezado__sub">Sensores simulados siguiendo la cadena real: sonda, divisor de la PCB, ADC del ESP32 y firmware.</p>
+          </div>
+          <label class="interruptor lab-usar"><input type="checkbox" id="lab-usar"> <span>Usar esta simulación en toda la página</span></label>
+        </header>
+
+        <ul class="lab-estado">
+          <li class="chip" id="lab-chip-wifi">WiFi</li>
+          <li class="chip chip--sin-dato" id="lab-chip-uptime">Encendido</li>
+          <li class="chip chip--sin-dato" id="lab-chip-envio">Próximo envío</li>
+          <li class="chip chip--sin-dato" id="lab-chip-ciclo">Ciclo</li>
+          <li class="chip" id="lab-chip-cal">Calibración</li>
+        </ul>
+
+        <div class="lab-grid">
+          <div class="tarjeta lab-vaso">
+            <h2 class="lab-titulo">Muestra en el vaso: <span id="lab-vaso-titulo"></span></h2>
+            <svg class="lab-svg" viewBox="0 0 240 236" role="img" aria-labelledby="lab-vaso-real">
+              <defs>
+                <clipPath id="lab-interior"><path d="M43 60 L43 200 Q43 212 55 212 L185 212 Q197 212 197 200 L197 60 Z"/></clipPath>
+              </defs>
+              <g id="lab-sondas" class="lab-sondas">
+                <g id="lab-sonda-ph" class="lab-sonda"><path class="lab-cable" d="M92 38 C92 52 78 52 78 68"/><rect x="73" y="68" width="10" height="112" rx="5" fill="#9FB3CC"/><circle cx="78" cy="180" r="6" fill="#C9D8EA" stroke="#7489A6"/></g>
+                <g id="lab-sonda-turbidez" class="lab-sonda"><path class="lab-cable" d="M112 38 C112 52 108 52 108 68"/><rect x="101" y="68" width="14" height="104" rx="3" fill="#2B3E58"/><rect x="101" y="160" width="14" height="12" rx="2" fill="#13305A"/></g>
+                <g id="lab-sonda-conductividad" class="lab-sonda"><path class="lab-cable" d="M128 38 C128 52 138 52 138 68"/><rect x="133" y="68" width="10" height="100" rx="3" fill="#1D4F8F"/><path d="M135 168v14M141 168v14" stroke="#B8C4D3" stroke-width="2"/></g>
+                <g id="lab-sonda-temperatura" class="lab-sonda"><path class="lab-cable" d="M148 38 C148 52 168 52 168 68"/><rect x="164.5" y="68" width="7" height="118" rx="3.5" fill="#5E6E84"/></g>
+              </g>
+              <g clip-path="url(#lab-interior)">
+                <rect id="lab-agua" class="lab-agua" x="40" y="96" width="160" height="120" fill="#E2EFF8"/>
+                <rect id="lab-sedimento" x="40" y="198" width="160" height="16" fill="#7A5A30" opacity="0"/>
+                <g id="lab-particulas" fill="#6B4E2A">
+                  <circle cx="58" cy="128" r="2.2"/><circle cx="90" cy="150" r="1.8"/><circle cx="120" cy="120" r="2"/><circle cx="152" cy="140" r="2.4"/>
+                  <circle cx="180" cy="118" r="1.6"/><circle cx="70" cy="178" r="2"/><circle cx="128" cy="190" r="2.2"/><circle cx="160" cy="172" r="1.8"/>
+                  <circle cx="100" cy="106" r="1.6"/><circle cx="186" cy="160" r="2"/><circle cx="62" cy="200" r="1.8"/><circle cx="146" cy="104" r="1.6"/>
+                  <circle cx="112" cy="168" r="2.4"/><circle cx="84" cy="124" r="1.6"/>
+                </g>
+              </g>
+              <path d="M40 58 L40 200 Q40 215 55 215 L185 215 Q200 215 200 200 L200 58" fill="none" stroke="#7489A6" stroke-width="3" stroke-linejoin="round"/>
+              <path d="M200 110h-10M200 140h-6M200 170h-10M200 200h-6" stroke="#9FB3CC" stroke-width="1.5"/>
+              <rect x="70" y="6" width="100" height="32" rx="5" fill="#0C2340"/>
+              <text x="120" y="27" text-anchor="middle" class="lab-svg-texto">ESP32</text>
+              <text x="78" y="232" text-anchor="middle" class="lab-svg-etq">pH</text>
+              <text x="108" y="232" text-anchor="middle" class="lab-svg-etq">NTU</text>
+              <text x="138" y="232" text-anchor="middle" class="lab-svg-etq">TDS</text>
+              <text x="168" y="232" text-anchor="middle" class="lab-svg-etq">T</text>
+            </svg>
+            <p class="lab-nota" id="lab-vaso-real"></p>
+            <div class="lab-muestras" id="lab-muestras" role="group" aria-label="Cambiar la muestra del vaso"></div>
+          </div>
+
+          <div class="tarjeta lab-cadena">
+            <h2 class="lab-titulo">Cadena de la señal</h2>
+            <p class="lab-nota">Lo que hay en el vaso, lo que sale del sensor, lo que lee el ADC y lo que calcula el firmware.</p>
+            <div class="tabla-scroll">
+              <table class="tabla lab-tabla">
+                <thead><tr><th scope="col">Sensor</th><th scope="col">En el vaso</th><th scope="col">Sensor</th><th scope="col">ADC</th><th scope="col">Firmware</th><th scope="col">Error</th></tr></thead>
+                <tbody id="lab-senal"></tbody>
+              </table>
+            </div>
+
+            <h2 class="lab-titulo lab-titulo--sep">Fallas</h2>
+            <div class="lab-fallas" id="lab-fallas"></div>
+            <button type="button" class="boton boton--fantasma lab-reiniciar" id="lab-reiniciar">Reiniciar ESP32</button>
+
+            <h2 class="lab-titulo lab-titulo--sep">Calibración</h2>
+            <div class="lab-acciones">
+              <button type="button" class="boton" id="lab-cal-ph">pH (buffers 4 · 7 · 10)</button>
+              <button type="button" class="boton" id="lab-cal-tds">Conductividad (1413 µS/cm)</button>
+              <button type="button" class="boton" id="lab-cal-turb">Turbidez (agua purificada)</button>
+              <button type="button" class="boton boton--fantasma" id="lab-fabrica">Valores de fábrica</button>
+            </div>
+            <p class="lab-nota" id="lab-cal-resultado"></p>
+          </div>
+        </div>
+
+        <div class="tarjeta lab-monitor">
+          <div class="lab-monitor__cab">
+            <h2 class="lab-titulo">Monitor serie · 115200</h2>
+            <div class="lab-acciones">
+              <div class="segmentado" role="group" aria-label="Velocidad de la simulación">
+                <button type="button" class="segmentado__op" data-velocidad="1">x1</button>
+                <button type="button" class="segmentado__op" data-velocidad="10">x10</button>
+                <button type="button" class="segmentado__op" data-velocidad="60">x60</button>
+              </div>
+              <button type="button" class="boton" id="lab-pausar">Pausar</button>
+              <button type="button" class="boton boton--fantasma" id="lab-limpiar">Limpiar</button>
+            </div>
+          </div>
+          <pre class="lab-serie" id="lab-serie" tabindex="0" aria-label="Monitor serie del ESP32 virtual"></pre>
+        </div>
+
+        <div class="tarjeta lab-api">
+          <h2 class="lab-titulo">Enviar también a mi API (MariaDB)</h2>
+          <p class="lab-nota">Solo funciona con la página corriendo en Docker (localhost:8080). Las lecturas llegan como dispositivo <code>esp32-sim</code> y se ven en DBeaver. ThingSpeak aquí es simulado; para publicar de verdad usa el simulador de terminal.</p>
+          <div class="campos">
+            <label class="interruptor"><input type="checkbox" id="lab-api"> <span>Enviar cada lectura a <code>/api/lecturas</code></span></label>
+            <label class="campo">ESP32_API_KEY
+              <input type="password" id="lab-llave" autocomplete="off" spellcheck="false" placeholder="la misma del archivo .env">
+              <span class="campo__ayuda">Se guarda solo en esta pestaña.</span>
+            </label>
+          </div>
+          <p class="ajustes__estado" id="lab-api-estado" role="status"></p>
+        </div>
+
+        <button type="button" class="boton boton--fantasma" id="lab-ocultar">Ocultar el laboratorio</button>
+      </section>
+
       <footer class="pie">
         <p>Indicadores de calidad, no un análisis de laboratorio certificado. Referencia de umbrales: NOM-127-SSA1-2021.</p>
       </footer>
     </main>
   </div>
 
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
   <script src="./js/vendor/chart.umd.min.js"></script>
   <script src="./js/config.js"></script>
   <script src="./js/semaforo.js"></script>
   <script src="./js/datos.js"></script>
+  <script src="./js/esp32-virtual.js"></script>
+  <script src="./js/laboratorio.js"></script>
   <script src="./js/app.js"></script>
 </body>
 </html>

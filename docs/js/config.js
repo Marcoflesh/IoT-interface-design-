@@ -7,7 +7,8 @@
  * La WRITE API KEY vive únicamente en el firmware del ESP32. Nunca en la página.
  */
 window.APP_CONFIG = {
-  // "demo", "thingspeak" o "api" (MariaDB, solo en localhost con Docker)
+  // "demo", "thingspeak", "api" (MariaDB, solo en localhost con Docker)
+  // o "simulador" (ESP32 virtual del laboratorio oculto)
   fuente: "demo",
 
   thingspeak: {
@@ -17,7 +18,8 @@ window.APP_CONFIG = {
 
   // API propia (MariaDB). Vacío = el mismo servidor que sirve la página (Docker, localhost:8080).
   api: {
-    url: ""
+    url: "",
+    dispositivo: ""   // vacío = todos · "esp32-1" = el real · "esp32-sim" = el simulador
   },
 
   // Qué field del canal de ThingSpeak corresponde a cada variable.

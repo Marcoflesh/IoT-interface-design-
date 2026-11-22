@@ -8,8 +8,8 @@
 
   var S = window.Semaforo;
   var CLAVE_LS = "calidadAgua.ajustes.v1";
-  var RUTAS = ["inicio", "historial", "alertas", "ajustes"];
-  var TITULOS = { inicio: "Estado del agua", historial: "Historial", alertas: "Alertas", ajustes: "Ajustes" };
+  var RUTAS = ["inicio", "historial", "alertas", "ajustes", "laboratorio"];
+  var TITULOS = { inicio: "Estado del agua", historial: "Historial", alertas: "Alertas", ajustes: "Ajustes", laboratorio: "Laboratorio" };
   var reducirMovimiento = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   var COLORES = {
@@ -70,6 +70,7 @@
       if (guardada) {
         c.fuente = guardada.fuente || c.fuente;
         c.thingspeak = Object.assign(c.thingspeak, guardada.thingspeak || {});
+        c.api = Object.assign(c.api || {}, guardada.api || {});
         c.intervaloSeg = guardada.intervaloSeg || c.intervaloSeg;
         c.criticoRojo = !!guardada.criticoRojo;
         if (guardada.umbrales) {
@@ -83,7 +84,7 @@
   function guardarConfig(c) {
     try {
       localStorage.setItem(CLAVE_LS, JSON.stringify({
-        fuente: c.fuente, thingspeak: c.thingspeak, intervaloSeg: c.intervaloSeg,
+        fuente: c.fuente, thingspeak: c.thingspeak, api: c.api, intervaloSeg: c.intervaloSeg,
         criticoRojo: c.criticoRojo, umbrales: c.umbrales
       }));
       return true;
@@ -106,6 +107,8 @@
     temporizador: null
   };
   var demo = Datos.crearDemo(estado.config.intervaloSeg);
+  if (estado.config.fuente === "simulador" && !Laboratorio.desbloqueado()) estado.config.fuente = "demo";
+  window.APP_FUENTE_ACTUAL = function () { return estado.config.fuente; };
 
   function clasificar(l) {
     return S.clasificar(l, estado.config.umbrales, { criticoRojo: estado.config.criticoRojo });
@@ -132,6 +135,7 @@
     var c = estado.config;
     var promesa = c.fuente === "thingspeak" ? Datos.leerThingSpeak(c)
       : c.fuente === "api" ? Datos.leerAPI(c)
+      : c.fuente === "simulador" ? Laboratorio.leer(c.resultados)
       : demo.leer(c.resultados);
 
     promesa
@@ -177,6 +181,10 @@
     });
     document.title = TITULOS[estado.ruta] + " · Calidad del Agua";
     if (estado.ruta === "ajustes") llenarFormulario(estado.config);
+    if (estado.ruta === "laboratorio") {
+      if (!Laboratorio.desbloqueado()) Laboratorio.desbloquear("url");
+      Laboratorio.render();
+    }
     render();
     if (enfocar) $("#contenido").focus({ preventScroll: false });
   }
@@ -194,8 +202,10 @@
     var c = estado.config;
     $("#nav-fuente").textContent = c.fuente === "thingspeak"
       ? "Fuente: ThingSpeak · canal " + (c.thingspeak.channelId || "sin configurar")
-      : c.fuente === "api" ? "Fuente: MariaDB (API local)"
+      : c.fuente === "api" ? "Fuente: MariaDB (API local)" + (c.api && c.api.dispositivo ? " · " + c.api.dispositivo : "")
+      : c.fuente === "simulador" ? "Fuente: ESP32 virtual (simulación)"
       : "Fuente: demo (datos simulados)";
+    $("#aviso-sim").hidden = c.fuente !== "simulador";
   }
 
   // ---------- 1. Inicio ----------
@@ -550,6 +560,7 @@
     f.fuente.value = c.fuente;
     f.channelId.value = c.thingspeak.channelId || "";
     f.readApiKey.value = c.thingspeak.readApiKey || "";
+    f.apiDispositivo.value = (c.api && c.api.dispositivo) || "";
     f.intervaloSeg.value = c.intervaloSeg;
     f.criticoRojo.checked = !!c.criticoRojo;
     S.CLAVES.forEach(function (k) {
@@ -566,6 +577,7 @@
     c.fuente = f.fuente.value || "demo";
     c.thingspeak.channelId = f.channelId.value.trim();
     c.thingspeak.readApiKey = f.readApiKey.value.trim();
+    c.api = Object.assign({}, c.api, { dispositivo: f.apiDispositivo.value.trim() });
     c.intervaloSeg = parseInt(f.intervaloSeg.value, 10) || 20;
     c.criticoRojo = f.criticoRojo.checked;
     S.CLAVES.forEach(function (k) {
@@ -579,6 +591,7 @@
 
   function validar(c) {
     if (c.fuente === "thingspeak" && !/^\d+$/.test(c.thingspeak.channelId)) return "El Channel ID debe ser un número.";
+    if (c.api.dispositivo && !/^[A-Za-z0-9_-]{1,32}$/.test(c.api.dispositivo)) return "El dispositivo solo lleva letras, números, - o _ (ej. esp32-1).";
     if (c.intervaloSeg < 15) return "El intervalo mínimo es 15 s (límite de ThingSpeak gratis).";
     for (var i = 0; i < S.CLAVES.length; i++) {
       var k = S.CLAVES[i], u = c.umbrales[k];
@@ -597,6 +610,21 @@
   // ---------- Eventos ----------
 
   function conectarEventos() {
+    // El laboratorio pide usar (o dejar) la simulación como fuente de toda la página.
+    document.addEventListener("lab:fuente", function (ev) {
+      var c = estado.config;
+      if (ev.detail.usar) c.fuente = "simulador";
+      else if (c.fuente === "simulador") c.fuente = "demo";
+      guardarConfig(c);
+      actualizar();
+    });
+    var pendiente = false;
+    Laboratorio.alNuevaLectura(function () {
+      if (estado.config.fuente !== "simulador" || pendiente) return;
+      pendiente = true;
+      setTimeout(function () { pendiente = false; actualizar(); }, 400);
+    });
+
     window.addEventListener("hashchange", function () { mostrarRuta(true); });
     document.addEventListener("visibilitychange", function () { if (!document.hidden) actualizar(); });
 
@@ -642,6 +670,7 @@
           : c.fuente === "api" ? "No se pudo conectar con la API. ¿Está corriendo docker compose?"
           : "No se pudo conectar. Revisa tu internet y el Channel ID.", "error");
       };
+      if (c.fuente === "simulador") { mensajeAjustes("El ESP32 virtual corre en esta pestaña: no necesita conexión.", "ok"); return; }
       mensajeAjustes("Probando conexión…");
       if (c.fuente === "api") {
         Datos.saludAPI(c).then(function (j) {
