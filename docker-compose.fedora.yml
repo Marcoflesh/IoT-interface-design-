@@ -61,3 +61,23 @@ services:
     depends_on:
       - web
     restart: unless-stopped
+
+  # Puente ThingSpeak → MariaDB (opcional):
+  #   docker compose -f docker-compose.fedora.yml --profile thingspeak up -d
+  puente:
+    build: ./api
+    container_name: calidad-agua-puente
+    profiles: ["thingspeak"]
+    network_mode: host
+    command: ["node", "src/puente-thingspeak.js"]
+    environment:
+      DB_HOST: ${DB_HOST:-127.0.0.1}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_NAME: ${DB_NAME:-calidad_agua}
+      DB_USER: ${DB_USER:-agua}
+      DB_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD en .env}
+      THINGSPEAK_CHANNEL_ID: ${THINGSPEAK_CHANNEL_ID:-}
+      THINGSPEAK_READ_KEY: ${THINGSPEAK_READ_KEY:-}
+      PUENTE_DISPOSITIVO: ${PUENTE_DISPOSITIVO:-esp32-1-ts}
+      PUENTE_INTERVALO: ${PUENTE_INTERVALO:-60}
+    restart: unless-stopped

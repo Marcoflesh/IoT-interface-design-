@@ -54,6 +54,28 @@ services:
       - api
     restart: unless-stopped
 
+  # Puente ThingSpeak → MariaDB (opcional): docker compose --profile thingspeak up -d
+  # Copia cada minuto las lecturas nuevas del canal a MariaDB (dispositivo esp32-1-ts).
+  puente:
+    build: ./api
+    container_name: calidad-agua-puente
+    profiles: ["thingspeak"]
+    command: ["node", "src/puente-thingspeak.js"]
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-calidad_agua}
+      DB_USER: ${DB_USER:-agua}
+      DB_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD en .env}
+      THINGSPEAK_CHANNEL_ID: ${THINGSPEAK_CHANNEL_ID:-}
+      THINGSPEAK_READ_KEY: ${THINGSPEAK_READ_KEY:-}
+      PUENTE_DISPOSITIVO: ${PUENTE_DISPOSITIVO:-esp32-1-ts}
+      PUENTE_INTERVALO: ${PUENTE_INTERVALO:-60}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
   # ESP32 virtual (opcional): docker compose --profile simulador up -d
   # Manda lecturas simuladas a la API como si fuera el ESP32 real (dispositivo esp32-sim).
   simulador:
