@@ -8,17 +8,20 @@
 #   5) te dice qué poner en DBeaver y en secretos.h del ESP32
 #
 # Uso (desde la carpeta del repo):   bash scripts/fedora/preparar-mariadb.sh
+# Si tu root de MariaDB tiene contraseña, ponla en el .env como DB_ROOT_PASSWORD (o el script te la pide).
 # Se puede correr varias veces sin romper nada.
 set -euo pipefail
 
 cd "$(dirname "$0")/../.."
+# shellcheck source=scripts/fedora/lib-mariadb.sh
+source scripts/fedora/lib-mariadb.sh
 verde() { printf '\033[32m✓ %s\033[0m\n' "$1"; }
 aviso() { printf '\033[33m! %s\033[0m\n' "$1"; }
 error() { printf '\033[31m✕ %s\033[0m\n' "$1" >&2; exit 1; }
 
 # ---------- .env ----------
 [ -f .env ] || error "No existe .env. Corre: cp .env.example .env  y edítalo."
-leer() { grep -E "^$1=" .env | tail -1 | cut -d= -f2- | sed -e "s/^[\"']//" -e "s/[\"']$//" || true; }
+leer() { leer_env "$1"; }
 DB_NAME=$(leer DB_NAME); DB_NAME=${DB_NAME:-calidad_agua}
 DB_USER=$(leer DB_USER); DB_USER=${DB_USER:-agua}
 DB_PASSWORD=$(leer DB_PASSWORD)
@@ -36,21 +39,9 @@ verde ".env leído (base: $DB_NAME, usuario: $DB_USER)"
 # ---------- 1) MariaDB corriendo ----------
 command -v mariadb >/dev/null || error "No encuentro el cliente mariadb. Instala:  sudo dnf install mariadb-server"
 
-# Acceso de administrador: en Fedora root entra con 'sudo mariadb' (unix_socket).
-# Si tu root tiene contraseña, el script te la pedirá.
-if [ "$(id -u)" -eq 0 ]; then ROOT=(mariadb -u root); else ROOT=(sudo mariadb -u root); fi
-if ! "${ROOT[@]}" -e "SELECT 1" >/dev/null 2>&1; then
-  if command -v systemctl >/dev/null && ! systemctl is-active --quiet mariadb; then
-    aviso "MariaDB no está corriendo. Iniciándolo…"
-    sudo systemctl enable --now mariadb
-    sleep 2
-  fi
-  if ! "${ROOT[@]}" -e "SELECT 1" >/dev/null 2>&1; then
-    aviso "root no entró sin contraseña. Escribe la contraseña de root de MariaDB:"
-    ROOT=(mariadb -u root -p)
-  fi
-fi
-verde "MariaDB responde ($("${ROOT[@]}" -N -e 'SELECT VERSION()'))"
+# Acceso de administrador (ver lib-mariadb.sh): DB_ROOT_PASSWORD del .env, sudo, o te la pide una vez.
+conectar_root
+verde "MariaDB responde como root vía $MODO_ROOT ($("${ROOT[@]}" -N -e 'SELECT VERSION()'))"
 
 if command -v ss >/dev/null && ! ss -tln | grep -qE '[:.]3306\s'; then
   aviso "MariaDB no escucha en el puerto TCP 3306 (¿skip-networking?). Revisa /etc/my.cnf.d/mariadb-server.cnf"
@@ -116,7 +107,7 @@ DBeaver (Nueva conexión → MariaDB):
 
 Terminal:
   mariadb -h 127.0.0.1 -u $DB_USER -p $DB_NAME     (lectura y consultas)
-  sudo mariadb $DB_NAME                          (administrador: borrar, cambiar tablas)
+  mariadb -u root -p $DB_NAME                    (administrador: borrar, cambiar tablas)
 
 Respaldo de la base:
   bash scripts/fedora/respaldar.sh

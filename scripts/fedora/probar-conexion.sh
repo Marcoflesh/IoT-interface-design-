@@ -22,7 +22,7 @@ if [ "${1:-}" = "--limpiar" ]; then
   MYSQL_PWD="$DB_PASSWORD" mariadb -h 127.0.0.1 -u "$DB_USER" "$DB_NAME" \
     -e "UPDATE dispositivos SET descripcion = 'Pruebas de terminal (se pueden ignorar)' WHERE id = 'prueba-terminal';"
   echo "Las lecturas de prueba llevan dispositivo = 'prueba-terminal'. Para borrarlas (como administrador):"
-  echo "  sudo mariadb $DB_NAME -e \"DELETE FROM lecturas WHERE dispositivo = 'prueba-terminal'\""
+  echo "  mariadb -u root -p $DB_NAME -e \"DELETE FROM lecturas WHERE dispositivo = 'prueba-terminal'\""
   exit 0
 fi
 
