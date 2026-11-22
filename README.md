@@ -20,6 +20,8 @@ Todo lo local corre con un solo `docker compose up`:
 
 > 🐧 **¿Usas Fedora y ya tienes MariaDB instalada (terminal o DBeaver)?** Sigue **[FEDORA.md](FEDORA.md)**: usa tu MariaDB local y trae scripts que preparan todo en un comando.
 
+> 🧪 **¿Sin hardware todavía?** Hay un ESP32 virtual con física realista: un simulador de terminal (`simulador/simular-esp32.js`, también como perfil `simulador` de Docker) y una **página oculta** dentro del sitio. Para encontrarla: ↑ ↑ ↓ ↓ ← → ← → B A, o 5 toques en la gota del logo. Detalles en [FEDORA.md, Paso 10](FEDORA.md#paso-10--mientras-llega-el-hardware-esp32-virtual).
+
 La página tiene 4 pantallas: **Inicio** (semáforo y 3 variables), **Historial** (gráficas), **Alertas** (cambios de color) y **Ajustes** (fuente de datos y umbrales). Puede leer de **ThingSpeak**, de **MariaDB** (solo en localhost) o de un **modo demo** para presentar sin hardware.
 
 ---
@@ -164,12 +166,16 @@ La versión de GitHub Pages lee de **ThingSpeak**. MariaDB vive en la laptop, as
 -- Últimas 20 lecturas
 SELECT * FROM lecturas ORDER BY id DESC LIMIT 20;
 
--- Promedios, mínimos y máximos por día (vista ya creada)
-SELECT * FROM resumen_diario;
+-- Promedios, mínimos y máximos por dispositivo y día (vista ya creada)
+SELECT * FROM resumen_diario WHERE dispositivo = 'esp32-1';
 
--- Lecturas fuera de rango (mismos umbrales del semáforo)
+-- ¿Quién está mandando datos y hace cuánto?
+SELECT * FROM estado_dispositivos;
+
+-- Lecturas fuera de rango del ESP32 real (mismos umbrales del semáforo)
 SELECT fecha, ph, turbidez, conductividad FROM lecturas
-WHERE ph NOT BETWEEN 6.5 AND 8.5 OR turbidez > 4 OR conductividad NOT BETWEEN 50 AND 1500;
+WHERE dispositivo = 'esp32-1'
+  AND (ph NOT BETWEEN 6.5 AND 8.5 OR turbidez > 4 OR conductividad NOT BETWEEN 50 AND 1500);
 
 -- Exportar a Excel: en Adminer, botón "Exportar" → formato CSV.
 ```
@@ -195,7 +201,7 @@ Las fechas se guardan en **UTC** (Querétaro = UTC−6). La página las conviert
 ## Pruebas
 
 ```bash
-node --test tests/*.test.js            # reglas del semáforo
+node --test tests/*.test.js            # semáforo y ESP32 virtual
 cd api && npm install && npm test      # validación de la API
 ```
 
@@ -210,11 +216,14 @@ IoT-interface-design-/
 │   ├── js/semaforo.js       ← reglas del semáforo
 │   ├── js/datos.js          ← ThingSpeak, API (MariaDB) y modo demo
 │   ├── js/app.js            ← pantallas e interacciones
+│   ├── js/esp32-virtual.js  ← modelo físico del ESP32 y sus sensores
+│   ├── js/laboratorio.js    ← página oculta (easter egg)
 │   └── js/vendor/           ← Chart.js 4.6.1 (local)
 ├── api/                     ← API Node + Express para MariaDB
-│   ├── src/esquema.sql      ← tabla lecturas + vista resumen_diario
-│   ├── src/app.js · server.js · validar.js
+│   ├── migraciones/         ← 001 lecturas · 002 dispositivos, calibraciones y diagnóstico
+│   ├── src/app.js · server.js · validar.js · migrar.js
 │   └── test/
+├── simulador/simular-esp32.js ← ESP32 virtual en la terminal
 ├── esp32/
 │   ├── envio_datos.ino      ← envío a ThingSpeak y a la API
 │   └── secretos.example.h

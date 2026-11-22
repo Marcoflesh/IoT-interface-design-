@@ -77,10 +77,23 @@ bash scripts/fedora/preparar-mariadb.sh
 El script:
 1. Revisa que MariaDB esté corriendo (si no, lo inicia).
 2. Entra como root con `sudo mariadb` (en Fedora root usa autenticación por socket; si tu root tiene contraseña, te la pide).
-3. Crea la base `calidad_agua` y el usuario `agua` que **solo puede entrar desde tu laptop**.
-4. Crea la tabla `lecturas` y la vista `resumen_diario`.
+3. Crea la base `calidad_agua` y el usuario `agua`, que **solo entra desde tu laptop** y solo puede **leer, insertar y actualizar** (no borra ni cambia tablas).
+4. Aplica las migraciones de `api/migraciones/` como administrador: tablas `lecturas`, `dispositivos`, `calibraciones`, `schema_migraciones` y vistas `resumen_diario` y `estado_dispositivos`.
 5. Abre el puerto **8080** en firewalld para que el ESP32 llegue.
 6. Te imprime los datos para DBeaver y la línea exacta para el ESP32.
+
+### Cómo queda la base
+
+| Tabla o vista | Qué guarda |
+|---|---|
+| `lecturas` | Cada envío: fecha (UTC), dispositivo, pH, turbidez, conductividad, temperatura, RSSI y voltajes crudos de cada sensor |
+| `dispositivos` | Cada ESP32: `esp32-1` (el real), `esp32-sim` (el simulador), si es simulado, firmware, última conexión e IP |
+| `calibraciones` | Historial de calibraciones por sensor (puntos, pendiente, ordenada, notas) |
+| `schema_migraciones` | Qué migraciones ya se aplicaron |
+| `resumen_diario` (vista) | Promedios, mínimos y máximos por dispositivo y día |
+| `estado_dispositivos` (vista) | Cuántos segundos lleva cada ESP32 sin mandar datos |
+
+**Por qué así:** si alguien obtiene la contraseña de la API, no puede borrar datos ni tablas. Los datos simulados se separan de los reales por `dispositivo`. Las migraciones numeradas permiten cambiar la base sin perder nada.
 
 Puedes correrlo cuantas veces quieras; si cambias la contraseña en `.env`, vuelve a correrlo y la actualiza.
 
@@ -94,13 +107,13 @@ sudo mariadb
 CREATE DATABASE IF NOT EXISTS calidad_agua CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS 'agua'@'localhost' IDENTIFIED BY 'TU_CLAVE';
 CREATE USER IF NOT EXISTS 'agua'@'127.0.0.1' IDENTIFIED BY 'TU_CLAVE';
-GRANT ALL PRIVILEGES ON calidad_agua.* TO 'agua'@'localhost';
-GRANT ALL PRIVILEGES ON calidad_agua.* TO 'agua'@'127.0.0.1';
+GRANT SELECT, INSERT, UPDATE, SHOW VIEW ON calidad_agua.* TO 'agua'@'localhost';
+GRANT SELECT, INSERT, UPDATE, SHOW VIEW ON calidad_agua.* TO 'agua'@'127.0.0.1';
 FLUSH PRIVILEGES;
 EXIT;
 ```
 ```bash
-mariadb -h 127.0.0.1 -u agua -p calidad_agua < api/src/esquema.sql
+for f in api/migraciones/*.sql; do sudo mariadb calidad_agua < "$f"; done
 sudo firewall-cmd --permanent --add-port=8080/tcp && sudo firewall-cmd --reload
 ```
 Se crean dos usuarios (`localhost` y `127.0.0.1`) porque la terminal entra por socket y la API entra por TCP.
@@ -112,14 +125,17 @@ Se crean dos usuarios (`localhost` y `127.0.0.1`) porque la terminal entra por s
 mariadb -h 127.0.0.1 -u agua -p calidad_agua
 ```
 ```sql
-SHOW TABLES;                                          -- lecturas, resumen_diario
+SHOW TABLES;                                          -- tablas y vistas
 SELECT * FROM lecturas ORDER BY id DESC LIMIT 10;     -- últimas lecturas
-SELECT * FROM resumen_diario;                         -- promedios por día
+SELECT * FROM estado_dispositivos;                    -- quién está mandando datos
+SELECT * FROM resumen_diario WHERE dispositivo = 'esp32-1';   -- promedios por día del ESP32 real
 ```
+
+El usuario `agua` sirve para consultar. Para borrar o cambiar tablas entra como administrador: `sudo mariadb calidad_agua`.
 
 ## Paso 6 · Conectarte desde DBeaver
 
-**Opción A, con tu conexión de siempre (root):** clic derecho en la conexión → **Refresh** (F5) → **Databases → calidad_agua → Tables → lecturas** → pestaña **Data**.
+**Opción A, con tu conexión de siempre (root, puede editar y borrar):** clic derecho en la conexión → **Refresh** (F5) → **Databases → calidad_agua → Tables → lecturas** → pestaña **Data**.
 
 **Opción B, conexión propia del proyecto (recomendada para la demo):**
 1. **Database → New Database Connection → MariaDB → Next**.
@@ -127,6 +143,8 @@ SELECT * FROM resumen_diario;                         -- promedios por día
 3. Username: `agua` · Password: la de `DB_PASSWORD` · marca **Save password**.
 4. **Test Connection** (si pide descargar el driver, acepta) → **Finish**.
 5. Abre `calidad_agua → Tables → lecturas → Data`. Cuando el ESP32 mande datos, presiona **F5** para ver las filas nuevas.
+
+Con el usuario `agua` DBeaver solo deja consultar e insertar: así no se borra nada por accidente durante la demo.
 
 Para consultas: clic derecho en la conexión → **SQL Editor → New SQL script** y usa las consultas del Paso 5 o las del README (Paso 9).
 
@@ -145,10 +163,10 @@ Abre http://localhost:8080 → **Ajustes → Fuente: MariaDB → Probar conexió
 bash scripts/fedora/probar-conexion.sh
 ```
 
-Revisa contenedores, página, API, MariaDB, que se rechace una llave falsa y que responda por la **IP de tu red**. Al final te dice el `API_URL` exacto para el ESP32. La lectura de prueba aparece en DBeaver con `dispositivo = prueba-terminal`; para borrarla:
+Revisa contenedores, página, API, MariaDB, que se rechace una llave falsa y que responda por la **IP de tu red**. Al final te dice el `API_URL` exacto para el ESP32. La lectura de prueba aparece en DBeaver con `dispositivo = prueba-terminal`. Para borrarla (como administrador):
 
 ```bash
-bash scripts/fedora/probar-conexion.sh --limpiar
+sudo mariadb calidad_agua -e "DELETE FROM lecturas WHERE dispositivo = 'prueba-terminal'"
 ```
 
 Prueba también desde **tu celular conectado a la misma WiFi**: abre `http://IP-DE-TU-LAPTOP:8080/api/salud`. Si ahí carga, el ESP32 también va a llegar.
@@ -176,6 +194,49 @@ Prueba también desde **tu celular conectado a la misma WiFi**: abre `http://IP-
    ```
 7. En DBeaver presiona **F5** sobre `lecturas`: ahí están las filas del ESP32 (`dispositivo = esp32-1`). En la página, el semáforo se actualiza solo.
 
+## Paso 10 · Mientras llega el hardware: ESP32 virtual
+
+Hay dos formas de simular el ESP32. Las dos usan el mismo modelo físico: curvas reales de los módulos, divisor de la PCB, ruido y no linealidad del ADC del ESP32, calibración y compensación por temperatura.
+
+**A. Simulador de terminal: manda datos reales a tu API y a MariaDB**
+
+```bash
+sudo dnf install nodejs                               # si no tienes Node 20+
+node simulador/simular-esp32.js                       # usa ESP32_API_KEY del .env
+```
+
+O dentro de Docker, para que corra solo:
+
+```bash
+docker compose -f docker-compose.fedora.yml --profile simulador up -d
+docker attach calidad-agua-simulador                  # ver el monitor serie y escribir comandos (salir: Ctrl+P, Ctrl+Q)
+```
+
+Comandos mientras corre: `muestras`, `muestra tierra`, `falla ph on`, `wifi off`, `calibrar ph`, `fabrica`, `estado`, `ayuda`. Con `SIM_GUION=1` en `.env` cambia de muestra cada 5 min (llave, tierra, vinagre…), ideal para dejarlo corriendo en la demo. Si pones `THINGSPEAK_WRITE_KEY` en `.env`, también publica de verdad en ThingSpeak y la versión de GitHub Pages lo muestra.
+
+Sus lecturas llegan como `dispositivo = esp32-sim`. En la página: Ajustes → MariaDB → Dispositivo `esp32-sim`.
+
+**B. Laboratorio oculto en la página (funciona también en GitHub Pages)**
+
+Para entrar: en cualquier pantalla teclea **↑ ↑ ↓ ↓ ← → ← → B A**, o toca **5 veces la gota** del logo, o abre `http://localhost:8080/#laboratorio`.
+
+Ahí puedes cambiar la muestra del vaso, ver la cadena completa (vaso → sensor → ADC → firmware), provocar fallas, calibrar, acelerar el tiempo y marcar **"Usar esta simulación en toda la página"**: Inicio, Historial y Alertas funcionan con el ESP32 virtual y muestran el aviso **Simulación**. En localhost también puede mandar cada lectura a tu API (pega la `ESP32_API_KEY` en la tarjeta "Enviar también a mi API").
+
+**Borrar los datos simulados** antes de medir con el ESP32 real:
+
+```bash
+sudo mariadb calidad_agua -e "DELETE FROM lecturas WHERE dispositivo = 'esp32-sim'"
+```
+
+## Respaldos
+
+```bash
+bash scripts/fedora/respaldar.sh                                   # crea respaldos/calidad_agua_AAAAMMDD_HHMMSS.sql.gz
+bash scripts/fedora/respaldar.sh --restaurar respaldos/<archivo>   # restaura (pide confirmación)
+```
+
+Guarda los 14 más recientes. Haz uno antes de cada demo y antes de borrar datos.
+
 ## Uso diario
 
 | Para | Comando |
@@ -184,6 +245,8 @@ Prueba también desde **tu celular conectado a la misma WiFi**: abre `http://IP-
 | Apagar | `docker compose -f docker-compose.fedora.yml down` |
 | Ver qué llega del ESP32 | `docker logs -f calidad-agua-api` |
 | Revisar todo | `bash scripts/fedora/probar-conexion.sh` |
+| Simular el ESP32 | `docker compose -f docker-compose.fedora.yml --profile simulador up -d` |
+| Respaldar la base | `bash scripts/fedora/respaldar.sh` |
 | Saber tu IP actual | `ip -4 route get 1.1.1.1` (el valor después de `src`) |
 
 Con `restart: unless-stopped` y Docker habilitado, la página y la API vuelven solas al reiniciar la laptop.
@@ -198,6 +261,7 @@ Con `restart: unless-stopped` y Docker habilitado, la página y la API vuelven s
 | Docker no arranca: `failed to find iptables` | Fedora usa nftables | `sudo alternatives --set iptables /usr/bin/iptables-nft && sudo systemctl restart docker` |
 | `docker compose: command not found` | Falta el plugin | `sudo dnf install docker-compose-plugin` |
 | La página da **403** o sale en blanco | SELinux bloquea la carpeta | El compose ya usa `:z`; si persiste: `sudo chcon -Rt container_file_t docs nginx.fedora.conf` |
+| Logs de la API: `La migración … necesita permisos de administrador` | Hay una migración nueva en `api/migraciones` | `bash scripts/fedora/preparar-mariadb.sh` (la aplica como root) y `docker compose -f docker-compose.fedora.yml restart api` |
 | `/api/salud` dice `ok:false` / logs: `Access denied for user 'agua'` | Contraseña distinta entre `.env` y MariaDB | Corre otra vez `bash scripts/fedora/preparar-mariadb.sh` y `docker compose -f docker-compose.fedora.yml up -d --force-recreate api` |
 | Logs: `ECONNREFUSED 127.0.0.1:3306` | MariaDB apagado o sin TCP | `sudo systemctl start mariadb`; revisa que no haya `skip-networking` en `/etc/my.cnf.d/` |
 | `address already in use` en 8080 | Otro programa usa el puerto | `sudo ss -tlnp \| grep 8080` y ciérralo, o cambia `listen 8080` en `nginx.fedora.conf` (y en el ESP32) |
