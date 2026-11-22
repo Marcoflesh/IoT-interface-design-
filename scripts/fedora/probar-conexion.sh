@@ -12,7 +12,9 @@ falla() { printf '\033[31m✕ %s\033[0m\n' "$1"; FALLAS=$((FALLAS + 1)); }
 FALLAS=0
 
 [ -f .env ] || { echo "Falta .env"; exit 1; }
-leer() { grep -E "^$1=" .env | tail -1 | cut -d= -f2- | sed -e "s/^[\"']//" -e "s/[\"']$//"; }
+# shellcheck source=scripts/fedora/lib-mariadb.sh
+source scripts/fedora/lib-mariadb.sh
+leer() { leer_env "$1"; }
 KEY=$(leer ESP32_API_KEY)
 DB_NAME=$(leer DB_NAME); DB_NAME=${DB_NAME:-calidad_agua}
 DB_USER=$(leer DB_USER); DB_USER=${DB_USER:-agua}

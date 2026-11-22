@@ -33,8 +33,12 @@ function leerEnvArchivo() {
   const vars = {};
   if (!fs.existsSync(archivo)) return vars;
   for (const linea of fs.readFileSync(archivo, "utf8").split("\n")) {
-    const m = linea.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
-    if (m) vars[m[1]] = m[2].replace(/^["']|["']$/g, "");
+    const m = linea.replace(/\r$/, "").match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)$/);
+    if (!m) continue;
+    // Mismas reglas que Docker Compose: comillas, o comentario " # …" al final.
+    const v = m[2].trim();
+    const q = v.match(/^(["'])(.*?)\1/);
+    vars[m[1]] = q ? q[2] : v.replace(/\s+#.*$/, "").trim();
   }
   return vars;
 }

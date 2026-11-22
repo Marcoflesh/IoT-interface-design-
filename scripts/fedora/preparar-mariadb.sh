@@ -80,6 +80,12 @@ done
 TOTAL=$(MYSQL_PWD="$DB_PASSWORD" mariadb -h 127.0.0.1 -P 3306 -u "$DB_USER" "$DB_NAME" -N -e "SELECT COUNT(*) FROM lecturas")
 DISPOSITIVOS=$(MYSQL_PWD="$DB_PASSWORD" mariadb -h 127.0.0.1 -u "$DB_USER" "$DB_NAME" -N -e "SELECT GROUP_CONCAT(id) FROM dispositivos")
 verde "El usuario '$DB_USER' entra por 127.0.0.1: $TOTAL lecturas, dispositivos: $DISPOSITIVOS"
+# Igual que DBeaver y la terminal (host localhost)
+if MYSQL_PWD="$DB_PASSWORD" mariadb -h localhost -u "$DB_USER" "$DB_NAME" -N -e "SELECT 1" >/dev/null 2>&1; then
+  verde "El usuario '$DB_USER' también entra como en DBeaver (localhost) con DB_PASSWORD"
+else
+  aviso "El usuario '$DB_USER' no entró por localhost; revisa DB_PASSWORD en .env"
+fi
 
 # ---------- 4) Firewall para el ESP32 ----------
 if command -v firewall-cmd >/dev/null && sudo firewall-cmd --state >/dev/null 2>&1; then

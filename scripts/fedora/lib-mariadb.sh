@@ -9,9 +9,22 @@
 #   3) te pide la contraseña de root de MariaDB UNA sola vez
 # La contraseña viaja en MYSQL_PWD, no en la línea de comandos, y nunca se imprime.
 
-# Lee una variable del .env sin ejecutarlo.
+# Lee una variable del .env sin ejecutarlo, con las mismas reglas que Docker Compose:
+#   CLAVE=valor            → valor
+#   CLAVE=valor   # nota   → valor     (comentario al final: lleva espacio antes del #)
+#   CLAVE="va # lor"       → va # lor  (entre comillas el # es parte del valor)
 leer_env() {
-  grep -E "^$1=" .env 2>/dev/null | tail -1 | cut -d= -f2- | sed -e "s/^[\"']//" -e "s/[\"']$//" || true
+  local linea valor
+  linea=$(grep -E "^[[:space:]]*$1[[:space:]]*=" .env 2>/dev/null | tail -1) || true
+  valor=${linea#*=}
+  valor=${valor%$'\r'}
+  valor="${valor#"${valor%%[![:space:]]*}"}"
+  case "$valor" in
+    \"*) valor=${valor#\"}; valor=${valor%%\"*} ;;
+    \'*) valor=${valor#\'}; valor=${valor%%\'*} ;;
+    *)   valor=$(printf '%s' "$valor" | sed -E 's/[[:space:]]+#.*$//; s/[[:space:]]+$//') ;;
+  esac
+  printf '%s' "$valor"
 }
 
 # Explica el error de MariaDB en palabras y termina.
