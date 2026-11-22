@@ -9,10 +9,10 @@
 window.APP_CONFIG = {
   // "demo", "thingspeak", "api" (MariaDB, solo en localhost con Docker)
   // o "simulador" (ESP32 virtual del laboratorio oculto)
-  fuente: "demo",
+  fuente: "thingspeak",
 
   thingspeak: {
-    channelId: "",     // ej. "2741234"
+    channelId: "3591663",     // ej. "2741234"
     readApiKey: ""     // vacío si el canal es público
   },
 
