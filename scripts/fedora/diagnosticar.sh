@@ -47,7 +47,12 @@ if [[ "$OPCIONES" == *rootless* ]]; then
 elif [[ "$SO" == *"Docker Desktop"* ]]; then
   mal "Estás usando Docker Desktop ($SO)."
   info "Docker Desktop corre en una máquina virtual: con network_mode host la página no queda en el localhost de Fedora"
-  info "ni la API llega a tu MariaDB. Usa Docker Engine:  docker context use default  (o instálalo con el Paso 1)."
+  info "ni la API llega a tu MariaDB. Usa Docker Engine (puede convivir con Desktop):"
+  info "  ${COMPOSE[*]} down                       (apaga lo que corre en Desktop)"
+  info "  sudo dnf install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin"
+  info "  sudo systemctl enable --now docker && sudo usermod -aG docker \$USER   → cierra sesión y entra"
+  info "  docker context use default   y luego   ${COMPOSE[*]} up -d --build"
+  info "  Si Docker Desktop se abre solo al iniciar, vuelve a cambiar el contexto: revisa con  docker context show"
 else
   ok "Docker Engine funcionando ($(docker version --format '{{.Server.Version}}' 2>/dev/null), contexto ${CONTEXTO:-default})"
 fi

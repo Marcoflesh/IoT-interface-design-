@@ -35,6 +35,8 @@ Si pide aceptar la llave GPG, la huella debe ser `060A 61C5 1B55 8A7F 742B 77AA 
 **Cierra sesión y vuelve a entrar** (o reinicia) para que tu usuario use Docker sin `sudo`.
 
 > Usa este Docker "normal". **No** uses Docker *rootless* ni Docker Desktop: en esos dos la red `host` no es la de tu Fedora, la página no aparece en `localhost:8080` y la API no ve tu MariaDB.
+>
+> **¿Ya tienes Docker Desktop?** Puede quedarse instalado. Instala igual Docker Engine con los comandos de arriba y elige su contexto: `docker context use default` (compruébalo con `docker context show`). Docker Desktop, al abrirse, cambia el contexto a `desktop-linux`: ciérralo o quita que arranque solo.
 
 Verifica:
 
