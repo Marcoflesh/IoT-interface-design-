@@ -135,7 +135,7 @@
     var muestraId = opciones.muestra && MUESTRAS[opciones.muestra] ? opciones.muestra : "llave";
     var m0 = MUESTRAS[muestraId];
     var verdad = { ph: m0.ph, ntu: m0.ntu, ec25: m0.ec25, temp: m0.temp };   // lo que "sienten" las sondas
-    var tDesdeCambio = 999;
+    var tDesdeCambio = 0;
     var t = 0;                  // tiempo de simulación (s) desde el encendido
     var uptime = 0;
     var proximo = 3;            // el primer ciclo, 3 s después de encender
@@ -152,6 +152,7 @@
       var linea = "[" + relojUptime(uptime) + "] " + texto;
       bitacora.push(linea);
       if (bitacora.length > 400) bitacora.shift();
+      if (opciones.alLog) opciones.alLog(linea);
       return linea;
     }
 
