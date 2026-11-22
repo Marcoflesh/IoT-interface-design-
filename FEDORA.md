@@ -164,7 +164,13 @@ docker compose -f docker-compose.fedora.yml up -d --build
 docker compose -f docker-compose.fedora.yml ps        # api y web en "running"
 ```
 
-Abre http://localhost:8080 → **Ajustes → Fuente: MariaDB → Probar conexión → Guardar**.
+Abre **http://localhost:8080** (escríbelo con `http://`) → **Ajustes → Fuente: MariaDB → Probar conexión → Guardar**.
+
+**¿No abre?** Corre el diagnóstico; revisa Docker, contenedores, puerto, página, API y SELinux y te dice qué hacer:
+
+```bash
+bash scripts/fedora/diagnosticar.sh
+```
 
 ## Paso 8 · Probar todo antes de tocar el ESP32
 
@@ -254,6 +260,7 @@ Guarda los 14 más recientes. Haz uno antes de cada demo y antes de borrar datos
 | Apagar | `docker compose -f docker-compose.fedora.yml down` |
 | Ver qué llega del ESP32 | `docker logs -f calidad-agua-api` |
 | Revisar todo | `bash scripts/fedora/probar-conexion.sh` |
+| No abre localhost:8080 | `bash scripts/fedora/diagnosticar.sh` |
 | Simular el ESP32 | `docker compose -f docker-compose.fedora.yml --profile simulador up -d` |
 | Respaldar la base | `bash scripts/fedora/respaldar.sh` |
 | Saber tu IP actual | `ip -4 route get 1.1.1.1` (el valor después de `src`) |
@@ -291,6 +298,7 @@ Actualiza la contraseña de root en DBeaver y en `DB_ROOT_PASSWORD` del `.env`.
 
 | Síntoma | Causa | Solución |
 |---|---|---|
+| http://localhost:8080 no abre | Contenedores sin levantar, Docker Desktop/Podman en vez de Docker Engine, puerto 8080 ocupado o SELinux | `bash scripts/fedora/diagnosticar.sh` |
 | `ERROR 1045 Access denied for user 'root'@'localhost'` | Contraseña de root de MariaDB incorrecta, o se escribió la de Linux | Pruébala sola con `mariadb -u root -p -e "SELECT 1"`. Si entra, ponla en `.env` como `DB_ROOT_PASSWORD` y repite el Paso 4. Si no la recuerdas: ver abajo |
 | DBeaver: `Access denied for user 'agua'@'localhost'` | La contraseña de DBeaver no es igual a `DB_PASSWORD` del `.env` (o el script es anterior al 21 nov y guardó un comentario `# …` como parte de la contraseña) | `git pull` y `bash scripts/fedora/preparar-mariadb.sh`: vuelve a poner la contraseña de `DB_PASSWORD`. En DBeaver usa exactamente ese valor. Luego `docker compose -f docker-compose.fedora.yml up -d --force-recreate api` |
 | `SHOW TABLES` vacío / `No database selected` | No elegiste la base, o no se creó | `USE calidad_agua;` antes; si no existe, repite el Paso 4 |

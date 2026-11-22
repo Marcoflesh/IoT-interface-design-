@@ -1,6 +1,6 @@
 # Handoff · Web IoT · Monitoreo de calidad del agua (TC1004B)
 
-**Fecha:** 2026-11-21 · **Último prompt:** DBeaver: Access denied for user 'agua'@'localhost'
+**Fecha:** 2026-11-21 · **Último prompt:** http://localhost:8080 no abre en Fedora
 
 ## Repositorio
 - https://github.com/Marcoflesh/IoT-interface-design- · rama `main`.
@@ -32,6 +32,11 @@ Laboratorio oculto (navegador) ─► fuente "simulador" de la página (y opcion
 - `scripts/fedora/lib-mariadb.sh` (usado por `preparar-mariadb.sh` y `respaldar.sh`): usa `DB_ROOT_PASSWORD` del `.env`, si no `sudo mariadb`, si no la pide **una vez**; la pasa por `MYSQL_PWD` (no en la línea de comandos) y explica en español los errores 1045, 1698 y 2002.
 - FEDORA.md: las tres contraseñas (Linux, root de MariaDB, usuario `agua`), `USE calidad_agua;` antes de `SHOW TABLES`, y recuperación de la contraseña de root (probada: no borra datos y deja root con socket + contraseña).
 - Probado como usuario normal sin sudo con root solo por contraseña: contraseña mala → mensaje 1045 claro; correcta (escrita o en `.env`) → base creada; respaldo OK.
+
+## Diagnóstico de localhost:8080
+- `scripts/fedora/diagnosticar.sh` (solo lee): Docker instalado/servicio/grupo, Podman o Docker Desktop (con red host no llega al Fedora), estado y logs de `calidad-agua-web` y `calidad-agua-api`, quién escucha en 8080, código HTTP de la página (403 → SELinux), `/api/salud` y SELinux. Probado en escenario sano y con fallas simuladas.
+- `lib-mariadb.sh`: sin terminal ya no se queda esperando la contraseña; explica el error y sale.
+- Pendiente: Marco corre el diagnóstico y comparte la salida si no queda claro.
 
 ## Contraseña de `agua` (DBeaver 1045)
 - Causa: `leer_env` tomaba el comentario al final de la línea (`DB_PASSWORD=clave   # nota`) como parte del valor; el ejemplo de FEDORA.md tenía uno. El usuario `agua` quedaba con otra contraseña.
