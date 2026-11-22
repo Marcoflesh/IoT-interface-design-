@@ -1,6 +1,6 @@
 # Handoff · Web IoT · Monitoreo de calidad del agua (TC1004B)
 
-**Fecha:** 2026-11-21 · **Último prompt:** GitHub Pages mostraba el README en lugar de la página
+**Fecha:** 2026-11-21 · **Último prompt:** DBeaver: Access denied for user 'agua'@'localhost'
 
 ## Repositorio
 - https://github.com/Marcoflesh/IoT-interface-design- · rama `main`.
@@ -32,6 +32,11 @@ Laboratorio oculto (navegador) ─► fuente "simulador" de la página (y opcion
 - `scripts/fedora/lib-mariadb.sh` (usado por `preparar-mariadb.sh` y `respaldar.sh`): usa `DB_ROOT_PASSWORD` del `.env`, si no `sudo mariadb`, si no la pide **una vez**; la pasa por `MYSQL_PWD` (no en la línea de comandos) y explica en español los errores 1045, 1698 y 2002.
 - FEDORA.md: las tres contraseñas (Linux, root de MariaDB, usuario `agua`), `USE calidad_agua;` antes de `SHOW TABLES`, y recuperación de la contraseña de root (probada: no borra datos y deja root con socket + contraseña).
 - Probado como usuario normal sin sudo con root solo por contraseña: contraseña mala → mensaje 1045 claro; correcta (escrita o en `.env`) → base creada; respaldo OK.
+
+## Contraseña de `agua` (DBeaver 1045)
+- Causa: `leer_env` tomaba el comentario al final de la línea (`DB_PASSWORD=clave   # nota`) como parte del valor; el ejemplo de FEDORA.md tenía uno. El usuario `agua` quedaba con otra contraseña.
+- Arreglo: `leer_env` (bash) y el lector del simulador (Node) siguen las reglas de Docker Compose (comillas, comentario con espacio antes de `#`); verificado contra `docker compose config` con 7 formatos. `preparar-mariadb.sh` ahora también comprueba el acceso como DBeaver (`-h localhost`). Ejemplo de la guía sin comentarios en línea.
+- Remedio para Marco: `git pull` + volver a correr `preparar-mariadb.sh` (corrige la contraseña con `ALTER USER`).
 
 ## ESP32 virtual
 - `docs/js/esp32-virtual.js`: modelo físico compartido. Curvas PH-4502C (Nernst, ganancia x3), SEN0189 (polinomio DFRobot), Gravity TDS (cúbica DFRobot, saturación 2.3 V), DS18B20; divisores de PCB supuestos; ADC del ESP32 a 11 dB con ruido, no linealidad y 12 bits; sobremuestreo; mediana de 5 en turbidez; compensación por temperatura; calibraciones; fallas.

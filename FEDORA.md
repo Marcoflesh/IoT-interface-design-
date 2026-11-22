@@ -62,12 +62,16 @@ nano .env                                                      # o: gedit .env /
 Llena así:
 
 ```ini
-DB_ROOT_PASSWORD=la-contraseña-de-root-de-TU-MariaDB   # la que usas en DBeaver para root; déjala vacía si root entra con sudo
+# Contraseña de root de TU MariaDB (la que usas en DBeaver para root). Vacía si root entra con sudo.
+DB_ROOT_PASSWORD=la-contraseña-de-root
 DB_NAME=calidad_agua
 DB_USER=agua
-DB_PASSWORD=una-clave-nueva-para-la-api-sin-comillas-simples
+# Contraseña NUEVA para el usuario agua: el script lo crea con esta. Es la que pones en DBeaver.
+DB_PASSWORD=una-clave-nueva-sin-comillas-simples
 ESP32_API_KEY=el-resultado-del-comando-de-python
 ```
+
+No crees el usuario `agua` a mano: el script lo crea (o le corrige la contraseña) con `DB_PASSWORD`. Si después cambias `DB_PASSWORD`, vuelve a correr el script.
 
 Son **tres contraseñas distintas**: la de tu usuario de Linux (la pide `sudo`), la de **root de MariaDB** (`DB_ROOT_PASSWORD`, ya la tienes) y la del usuario **agua** que se va a crear (`DB_PASSWORD`, la inventas ahora).
 
@@ -288,6 +292,7 @@ Actualiza la contraseña de root en DBeaver y en `DB_ROOT_PASSWORD` del `.env`.
 | Síntoma | Causa | Solución |
 |---|---|---|
 | `ERROR 1045 Access denied for user 'root'@'localhost'` | Contraseña de root de MariaDB incorrecta, o se escribió la de Linux | Pruébala sola con `mariadb -u root -p -e "SELECT 1"`. Si entra, ponla en `.env` como `DB_ROOT_PASSWORD` y repite el Paso 4. Si no la recuerdas: ver abajo |
+| DBeaver: `Access denied for user 'agua'@'localhost'` | La contraseña de DBeaver no es igual a `DB_PASSWORD` del `.env` (o el script es anterior al 21 nov y guardó un comentario `# …` como parte de la contraseña) | `git pull` y `bash scripts/fedora/preparar-mariadb.sh`: vuelve a poner la contraseña de `DB_PASSWORD`. En DBeaver usa exactamente ese valor. Luego `docker compose -f docker-compose.fedora.yml up -d --force-recreate api` |
 | `SHOW TABLES` vacío / `No database selected` | No elegiste la base, o no se creó | `USE calidad_agua;` antes; si no existe, repite el Paso 4 |
 | `permission denied ... docker.sock` | Tu usuario no está en el grupo docker | `sudo usermod -aG docker $USER` y cierra sesión |
 | Docker no arranca: `failed to find iptables` | Fedora usa nftables | `sudo alternatives --set iptables /usr/bin/iptables-nft && sudo systemctl restart docker` |
