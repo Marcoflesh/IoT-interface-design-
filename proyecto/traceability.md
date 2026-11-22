@@ -25,7 +25,7 @@
 | R9 | Instrucciones | Página simple con botones interactivos | Menú, segmentados, acciones | ✅ Hecho |
 | R10 | Instrucciones | Paleta azul de neutro a oscuro | `styles.css` | ✅ Hecho |
 | R11 | Usuario | Localhost con Docker | `Dockerfile`, `docker-compose.yml` | ⚠️ Hecho, sin probar en este entorno |
-| R12 | Usuario | GitHub Pages | Carpeta `docs/`, guía Paso 6 | ✅ Listo para publicar |
+| R12 | Usuario | GitHub Pages | Carpeta `docs/` + `index.html` raíz que redirige | ✅ Publicado y verificado en /docs/ |
 | R13 | Usuario | ThingSpeak | `datos.js`, Ajustes, `esp32/envio_datos.ino` | ⚠️ Hecho, falta prueba con canal real |
 | R14 | Usuario | Guía paso a paso | `README.md` | ✅ Hecho |
 | R15 | Actividad §4 | Presentación de 4 slides | Fuera de la página | ⏳ Pendiente |

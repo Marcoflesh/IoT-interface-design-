@@ -1,10 +1,11 @@
 # Handoff · Web IoT · Monitoreo de calidad del agua (TC1004B)
 
-**Fecha:** 2026-11-21 · **Último prompt:** error 1045 (Access denied for user root@localhost) al preparar MariaDB en Fedora
+**Fecha:** 2026-11-21 · **Último prompt:** GitHub Pages mostraba el README en lugar de la página
 
 ## Repositorio
 - https://github.com/Marcoflesh/IoT-interface-design- · rama `main`.
-- GitHub Pages aún **no** está activado: Settings → Pages → `main` / `/docs`. URL esperada: https://marcoflesh.github.io/IoT-interface-design-/
+- GitHub Pages **activo** desde `main` / raíz. Como la raíz mostraba el README, se agregó `index.html` (redirige a `docs/`) y `.nojekyll`. La app quedó en https://marcoflesh.github.io/IoT-interface-design-/docs/ (verificada) y la raíz redirige ahí.
+- Opcional para URL sin `/docs/`: Settings → Pages → Branch `main`, carpeta `/docs`.
 
 ## Arquitectura actual
 ```
