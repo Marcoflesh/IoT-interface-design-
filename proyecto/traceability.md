@@ -43,4 +43,5 @@
 | R28 | Usuario | Qué API keys se necesitan | Tabla de llaves en handoff y respuesta | ✅ Hecho |
 | R29 | Usuario | Resolver error 1045 de root al preparar MariaDB en Fedora | `lib-mariadb.sh`, FEDORA.md (contraseñas, SHOW TABLES, recuperación) | ✅ Hecho (reproducido y probado) |
 | R30 | Usuario | Conectar ThingSpeak con MariaDB | Puente `puente-thingspeak.js` + migración 003 + perfil `thingspeak`; FEDORA.md Paso 11 | ✅ Hecho (probado con ThingSpeak falso) |
+| R31 | Usuario | Guía equivalente a FEDORA.md para Windows y PowerShell | WINDOWS.md + `scripts/windows/*.ps1` + puertos configurables | ✅ Hecho (SQL probado; .ps1 sin ejecutar) |
 | R20 | Spec §6 Fase 6 | Analizar datos y tendencias | Vista `resumen_diario`, consultas SQL, Adminer, exportar CSV | ✅ Hecho |

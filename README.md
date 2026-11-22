@@ -18,6 +18,8 @@ Todo lo local corre con un solo `docker compose up`:
 | `db` | MariaDB 11.4 con la tabla `lecturas` | localhost:3306 |
 | `adminer` | Ver y consultar la base desde el navegador | http://localhost:8081 |
 
+> 🪟 **¿Usas Windows?** Sigue **[WINDOWS.md](WINDOWS.md)**: Docker Desktop con MariaDB dentro de Docker y scripts de PowerShell.
+
 > 🐧 **¿Usas Fedora y ya tienes MariaDB instalada (terminal o DBeaver)?** Sigue **[FEDORA.md](FEDORA.md)**: usa tu MariaDB local y trae scripts que preparan todo en un comando.
 
 > 🔁 **¿El ESP32 solo puede mandar a ThingSpeak?** El puente (`api/src/puente-thingspeak.js`, perfil `thingspeak`) copia cada minuto las lecturas nuevas del canal a MariaDB sin duplicar. Ver [FEDORA.md, Paso 11](FEDORA.md).
@@ -236,5 +238,7 @@ IoT-interface-design-/
 ├── docker-compose.yml · Dockerfile · nginx.conf · .env.example
 ├── docker-compose.fedora.yml · nginx.fedora.conf   ← variante Fedora con MariaDB local
 ├── FEDORA.md                ← guía para Fedora + DBeaver
+├── WINDOWS.md               ← guía para Windows + PowerShell
+├── scripts/windows/         ← probar conexión, firewall, ver MariaDB, ThingSpeak, página, respaldos
 └── README.md                ← esta guía
 ```

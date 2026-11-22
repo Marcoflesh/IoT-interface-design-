@@ -1,6 +1,6 @@
 # Handoff · Web IoT · Monitoreo de calidad del agua (TC1004B)
 
-**Fecha:** 2026-11-21 · **Último prompt:** ver que todo funciona desde MariaDB (terminal) en vez de DBeaver
+**Fecha:** 2026-11-21 · **Último prompt:** guía y scripts para Windows con PowerShell
 
 ## Repositorio
 - https://github.com/Marcoflesh/IoT-interface-design- · rama `main`.
@@ -32,6 +32,12 @@ Laboratorio oculto (navegador) ─► fuente "simulador" de la página (y opcion
 - `scripts/fedora/lib-mariadb.sh` (usado por `preparar-mariadb.sh` y `respaldar.sh`): usa `DB_ROOT_PASSWORD` del `.env`, si no `sudo mariadb`, si no la pide **una vez**; la pasa por `MYSQL_PWD` (no en la línea de comandos) y explica en español los errores 1045, 1698 y 2002.
 - FEDORA.md: las tres contraseñas (Linux, root de MariaDB, usuario `agua`), `USE calidad_agua;` antes de `SHOW TABLES`, y recuperación de la contraseña de root (probada: no borra datos y deja root con socket + contraseña).
 - Probado como usuario normal sin sudo con root solo por contraseña: contraseña mala → mensaje 1045 claro; correcta (escrita o en `.env`) → base creada; respaldo OK.
+
+## Windows (WINDOWS.md)
+- Decisión: en Windows MariaDB corre **dentro de Docker** (`docker-compose.yml`), porque Docker en Windows es Docker Desktop (VM/WSL2) y la variante Fedora depende de red host.
+- `docker-compose.yml`: puertos configurables `DB_PUERTO_LOCAL` (3307 si ya hay MariaDB/MySQL en Windows) y `WEB_PUERTO` (si Hyper-V reserva el 8080). `.gitattributes` fija LF en sh/sql/conf/js/yml/md y CRLF en ps1.
+- `scripts/windows/` (UTF-8 con BOM para Windows PowerShell 5.1): `lib.ps1` (lector de .env con reglas de Compose, `docker exec` a MariaDB por stdin), `probar-conexion.ps1`, `abrir-firewall.ps1` (red Privada + regla de entrada), `ver-mariadb.ps1 [-Seguir]`, `probar-thingspeak.ps1 [-Escribir]`, `configurar-pagina.ps1 [-Demo]`, `respaldar.ps1 [-Restaurar]` (volcado comprimido dentro del contenedor y `docker cp`, para no pasar por la redirección de PowerShell 5.1).
+- Verificado: todo el SQL de los scripts contra MariaDB real con el usuario de la app; regex de `configurar-pagina`; `docker compose config` con puertos cambiados y perfiles. **No verificado:** ejecución de los .ps1 (no se pudo instalar PowerShell en el entorno) ni Docker Desktop en Windows.
 
 ## Ver datos desde la terminal
 - `scripts/fedora/ver-mariadb.sh [--seguir]`: con el usuario de la app muestra `estado_dispositivos`, últimas 10 lecturas en hora de México (CONVERT_TZ a -06:00) con el color del semáforo calculado en SQL, y el resumen de la última hora por dispositivo y origen. Probado contra MariaDB real.
