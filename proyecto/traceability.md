@@ -1,6 +1,6 @@
 # Traceability · Web IoT · Calidad del agua
 
-**Actualizado:** 2026-11-20 (MariaDB)
+**Actualizado:** 2026-11-21 (base v2, ESP32 virtual, laboratorio oculto)
 
 ## Pantallas
 | # | Pantalla | Propósito | Navegación |
@@ -8,7 +8,8 @@
 | P1 | Inicio | Semáforo, conteo de variables en rango, 3 tarjetas con medidor, temperatura, control demo | Tarjeta → P2 de esa variable |
 | P2 | Historial | Gráfica con banda de rango, puntos fuera de rango, estadísticas, tabla | Botones de variable y de 20/50/100 lecturas |
 | P3 | Alertas | Distribución de estados y lista de cambios de color con filtros | Insignia en el menú con el número de alertas |
-| P4 | Ajustes | Fuente (demo/ThingSpeak/MariaDB), Channel ID, Read Key, intervalo, umbrales, crítico | Guardar, Probar conexión, Restaurar |
+| P4 | Ajustes | Fuente (demo/ThingSpeak/MariaDB/ESP32 virtual), Channel ID, Read Key, dispositivo, intervalo, umbrales, crítico |
+| P5 (oculta) | Laboratorio | ESP32 virtual: vaso, cadena de la señal, fallas, calibración, monitor serie, envío a la API | Guardar, Probar conexión, Restaurar |
 
 ## Matriz requisito → implementación
 | ID | Fuente | Requisito | Dónde se cumple | Estado |
@@ -34,4 +35,10 @@
 | R19 | Usuario | GitHub Pages sigue funcionando | La página publicada lee de ThingSpeak | ✅ Hecho |
 | R21 | Usuario | Usar la MariaDB local de Fedora (terminal y DBeaver) | `docker-compose.fedora.yml`, `scripts/fedora/preparar-mariadb.sh`, FEDORA.md Pasos 4 a 6 | ✅ Hecho (probado sin SELinux/firewalld) |
 | R22 | Usuario | Paso a paso completo para que funcione el ESP32 en Fedora | FEDORA.md Pasos 1 a 9, `probar-conexion.sh` | ✅ Hecho |
+| R23 | Usuario | Base de datos como la haría un senior | Migraciones, permisos mínimos, `dispositivos`, `calibraciones`, diagnóstico, vistas, respaldos | ✅ Hecho (probado con MariaDB real) |
+| R24 | Usuario | Banco de preguntas para el encargado del ESP32 | Doc compartible (8 secciones, preguntas ★ que bloquean) | ✅ Hecho |
+| R25 | Usuario | Generar todo como si el ESP32 estuviera conectado | Simulador de terminal → API → MariaDB (y ThingSpeak opcional) | ✅ Hecho |
+| R26 | Usuario | Página oculta tipo easter egg con sensores simulados lo más realista posible | `laboratorio.js` + `esp32-virtual.js` (curvas de módulos, ADC, firmware, fallas) | ✅ Hecho |
+| R27 | Usuario | Página funcionando sin hardware | Fuente "simulador" en toda la página, con aviso de simulación | ✅ Hecho (también en GitHub Pages) |
+| R28 | Usuario | Qué API keys se necesitan | Tabla de llaves en handoff y respuesta | ✅ Hecho |
 | R20 | Spec §6 Fase 6 | Analizar datos y tendencias | Vista `resumen_diario`, consultas SQL, Adminer, exportar CSV | ✅ Hecho |

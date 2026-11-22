@@ -26,8 +26,16 @@
 - [x] Scripts de preparación y prueba.
 - [x] Guía FEDORA.md (terminal, DBeaver, ESP32).
 
+### Fase 2.7 · Base v2 y ESP32 virtual ✅
+- [x] Migraciones, permisos mínimos, dispositivos, calibraciones, respaldos.
+- [x] Modelo físico de sensores y ADC con pruebas.
+- [x] Simulador de terminal y laboratorio oculto.
+- [x] Banco de preguntas para el encargado del ESP32.
+
 ### Fase 3 · Conexión real ⏳ (equipo)
-- [ ] En Fedora: seguir FEDORA.md Pasos 1 a 9.
+- [ ] Recibir respuestas del banco de preguntas y ajustar el modelo del simulador.
+- [ ] En Fedora: seguir FEDORA.md Pasos 1 a 10.
+- [ ] Borrar lecturas `esp32-sim` antes de medir con el real (hacer respaldo antes).
 - [ ] Crear `.env` y levantar `docker compose` (Guía, Pasos 1 y 2).
 - [ ] Crear canal ThingSpeak con field1 a field4 (Paso 3).
 - [ ] Cambiar Ubidots por `enviarThingSpeak()` + `enviarAPI()` en el firmware (Paso 4).
