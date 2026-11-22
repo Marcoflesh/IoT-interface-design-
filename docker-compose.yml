@@ -1,7 +1,7 @@
 # Monitoreo de calidad del agua · entorno local
 #   web      → http://localhost:8080       (página + /api hacia la API)
 #   adminer  → http://localhost:8081       (ver la base de datos en el navegador)
-#   db       → localhost:3306              (MariaDB, solo desde esta computadora)
+#   db       → localhost:3306              (MariaDB, solo desde esta computadora; cambia con DB_PUERTO_LOCAL)
 # Antes de arrancar: copia .env.example a .env y cambia las contraseñas.
 
 services:
@@ -18,7 +18,7 @@ services:
       - datos-mariadb:/var/lib/mysql                     # los datos sobreviven a docker compose down
       - ./api/migraciones:/docker-entrypoint-initdb.d:ro     # primera vez; luego la API aplica las nuevas
     ports:
-      - "127.0.0.1:3306:3306"
+      - "127.0.0.1:${DB_PUERTO_LOCAL:-3306}:3306"     # 3307 si ya tienes MariaDB/MySQL instalado en tu compu
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 5s
@@ -46,7 +46,7 @@ services:
     build: .
     container_name: calidad-agua-web
     ports:
-      - "8080:80"            # abierto a la red local: el ESP32 manda a http://IP-DE-LA-LAPTOP:8080/api/lecturas
+      - "${WEB_PUERTO:-8080}:80"    # abierto a la red local: el ESP32 manda a http://IP-DE-LA-LAPTOP:8080/api/lecturas
     volumes:
       - ./docs:/usr/share/nginx/html:ro
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
