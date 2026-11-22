@@ -34,12 +34,22 @@ if ! SALIDA=$(docker info 2>&1); then
   exit 1
 fi
 SO=$(docker info --format '{{.OperatingSystem}}' 2>/dev/null)
-if [[ "$SO" == *"Docker Desktop"* ]]; then
+OPCIONES=$(docker info --format '{{json .SecurityOptions}}' 2>/dev/null)
+CONTEXTO=$(docker context show 2>/dev/null)
+if [[ "$OPCIONES" == *rootless* ]]; then
+  mal "Docker está en modo ROOTLESS (contexto: ${CONTEXTO:-?})."
+  info "En rootless, network_mode host NO es la red de tu Fedora: la página no aparece en tu localhost:8080"
+  info "y la API no ve tu MariaDB en 127.0.0.1:3306. Usa el Docker normal (con permisos de sistema):"
+  info "  sudo systemctl enable --now docker"
+  info "  systemctl --user disable --now docker docker.socket 2>/dev/null; docker context use default"
+  info "  unset DOCKER_HOST   (y bórralo de ~/.bashrc si ahí lo pusiste)"
+  info "  sudo usermod -aG docker \$USER  → cierra sesión, entra y repite:  ${COMPOSE[*]} up -d --build"
+elif [[ "$SO" == *"Docker Desktop"* ]]; then
   mal "Estás usando Docker Desktop ($SO)."
   info "Docker Desktop corre en una máquina virtual: con network_mode host la página no queda en el localhost de Fedora"
   info "ni la API llega a tu MariaDB. Usa Docker Engine:  docker context use default  (o instálalo con el Paso 1)."
 else
-  ok "Docker Engine funcionando ($(docker version --format '{{.Server.Version}}' 2>/dev/null))"
+  ok "Docker Engine funcionando ($(docker version --format '{{.Server.Version}}' 2>/dev/null), contexto ${CONTEXTO:-default})"
 fi
 
 echo "== 2. Contenedores"
@@ -56,11 +66,45 @@ for c in calidad-agua-web calidad-agua-api; do
   fi
 done
 
+for c in calidad-agua-web calidad-agua-api; do
+  RED=$(docker inspect -f '{{.HostConfig.NetworkMode}}' "$c" 2>/dev/null)
+  if [ -n "$RED" ] && [ "$RED" != "host" ]; then
+    mal "$c usa la red '$RED', no la del equipo: se levantó con docker-compose.yml en vez del de Fedora."
+    info "docker compose down  y luego  ${COMPOSE[*]} up -d --build"
+  fi
+done
+
+echo "== 2b. MariaDB"
+if ss -ltn 2>/dev/null | grep -qE '[:.]3306\s'; then
+  ok "MariaDB escucha en tu Fedora: $(ss -ltn 2>/dev/null | grep -E '[:.]3306\s' | awk '{print $4}' | tr '\n' ' ')"
+else
+  mal "Nada escucha en el puerto 3306 de tu Fedora."
+  info "sudo systemctl enable --now mariadb   (y revisa que no haya skip-networking en /etc/my.cnf.d/)"
+fi
+if [ "$(docker inspect -f '{{.State.Running}}' calidad-agua-api 2>/dev/null)" = "true" ]; then
+  PRUEBA=$(docker exec calidad-agua-api node -e '
+    const s = require("net").connect({ host: process.env.DB_HOST || "127.0.0.1", port: +(process.env.DB_PORT || 3306) });
+    s.setTimeout(3000);
+    s.on("connect", () => { console.log("OK"); process.exit(0); });
+    s.on("timeout", () => { console.log("ETIMEDOUT"); process.exit(1); });
+    s.on("error", (e) => { console.log(e.code); process.exit(1); });' 2>&1 | tail -1)
+  case "$PRUEBA" in
+    OK) ok "Desde el contenedor de la API sí se llega al puerto de MariaDB."
+        info "Si la API aún falla, es usuario/contraseña: bash scripts/fedora/preparar-mariadb.sh y ${COMPOSE[*]} up -d --force-recreate api" ;;
+    ECONNREFUSED) mal "Desde el contenedor, 127.0.0.1:3306 rechaza la conexión: el contenedor no está en la red de tu Fedora (rootless, Desktop o Podman) o MariaDB no escucha por TCP." ;;
+    EACCES) mal "SELinux bloquea al contenedor de la API (permiso denegado al conectar)."
+            info "Revisa: sudo ausearch -m avc -ts recent | tail ; compártelo para ver el arreglo exacto." ;;
+    ETIMEDOUT) mal "Desde el contenedor, la conexión a MariaDB se queda colgada: el contenedor no está en la red de tu Fedora (rootless, Desktop o Podman) o un firewall la bloquea." ;;
+    *) mal "Prueba de conexión desde el contenedor: $PRUEBA" ;;
+  esac
+fi
+
 echo "== 3. Puerto 8080"
 ESCUCHA=$(ss -ltnp 2>/dev/null | grep -E '[:.]8080\s' || true)
 if [ -z "$ESCUCHA" ]; then
-  mal "Nadie escucha en el puerto 8080 (nginx no arrancó)."
-  info "Revisa:  docker logs calidad-agua-web"
+  mal "Nadie escucha en el puerto 8080 de tu Fedora."
+  info "Si el contenedor web dice 'corriendo', casi seguro Docker está en rootless/Desktop (ver sección 1). Log de nginx:"
+  docker logs --tail 6 calidad-agua-web 2>&1 | sed 's/^/      /'
 else
   ok "Algo escucha en 8080: $(echo "$ESCUCHA" | awk '{print $4}' | head -1)"
   if ! docker logs calidad-agua-web 2>&1 | grep -q "start worker"; then
