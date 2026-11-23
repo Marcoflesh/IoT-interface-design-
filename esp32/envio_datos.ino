@@ -10,6 +10,8 @@
  *
  * Llaves y red: copien secretos.example.h como secretos.h.
  *
+ * Antes de este firmware, prueben la red con prueba_red/prueba_red.ino (esp32/README.md).
+ *
  * ¿La red no deja que el ESP32 vea la laptop? Usen solo enviarThingSpeak(): el puente
  * ThingSpeak → MariaDB (FEDORA.md, Paso 11) copia las lecturas a la base desde la laptop.
  */
@@ -21,6 +23,41 @@
 
 const unsigned long INTERVALO_ENVIO_MS = 20000;   // ThingSpeak gratis: mínimo 15 s
 unsigned long ultimoEnvio = 0;
+
+// ---------- WiFi ----------
+// Conecta con red normal (WPA2) o con usuario + contraseña (WPA2-Enterprise, PEAP),
+// según WIFI_EMPRESARIAL en secretos.h. Regresa true si obtuvo IP a tiempo.
+// Llámenla en setup() y al inicio de cada envío: si el WiFi se cayó, reconecta.
+bool conectarWiFi(unsigned long esperaMs = 20000) {
+  if (WiFi.status() == WL_CONNECTED) return true;
+
+  WiFi.mode(WIFI_STA);
+  if (WIFI_EMPRESARIAL) {
+    // PEAP + MSCHAPv2, sin certificado. Requiere el core de ESP32 2.0.3 o más nuevo.
+    WiFi.begin(WIFI_SSID, WPA2_AUTH_PEAP, WIFI_USUARIO, WIFI_USUARIO, WIFI_PASSWORD);
+  } else {
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  }
+
+  Serial.printf("Conectando a %s", WIFI_SSID);
+  unsigned long inicio = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - inicio < esperaMs) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println();
+
+  if (WiFi.status() != WL_CONNECTED) {
+    if (WiFi.status() == WL_NO_SSID_AVAIL) {
+      Serial.println("No encuentra la red: revisen el nombre y que sea de 2.4 GHz.");
+    } else {
+      Serial.println("No se conectó: revisen contraseña, usuario y WIFI_EMPRESARIAL.");
+    }
+    return false;
+  }
+  Serial.printf("WiFi OK · IP %s · RSSI %d dBm\n", WiFi.localIP().toString().c_str(), WiFi.RSSI());
+  return true;
+}
 
 // Convierte una lectura a texto JSON. Si el sensor falló (NaN), manda null.
 String jsonNumero(float valor, int decimales) {
@@ -83,10 +120,16 @@ int enviarAPI(float ph, float turbidez, float conductividad, float temperatura) 
 }
 
 /*
+ * En su setup():
+ *
+ *   Serial.begin(115200);
+ *   conectarWiFi();
+ *
  * En su loop(), después de leer los sensores (en lugar del envío a Ubidots):
  *
  *   if (millis() - ultimoEnvio >= INTERVALO_ENVIO_MS) {
  *     ultimoEnvio = millis();
+ *     conectarWiFi();   // no hace nada si ya está conectado
  *
  *     long ts = enviarThingSpeak(ph, turbidez, conductividad, temperatura);
  *     int api = enviarAPI(ph, turbidez, conductividad, temperatura);

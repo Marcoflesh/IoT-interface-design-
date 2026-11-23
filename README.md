@@ -105,10 +105,12 @@ Los cambios dentro de `docs/` se ven con solo recargar el navegador. Si cambian 
 
 ## Paso 4 · Firmware: ESP32 → ThingSpeak + MariaDB (en lugar de Ubidots)
 
+> Conexión del ESP32 a la laptop o a la red del Tec, sensores reales y diagnóstico de red: [esp32/README.md](esp32/README.md). Suban primero `esp32/prueba_red/prueba_red.ino`.
+
 1. Saquen la **IP de la laptop** que corre Docker (misma red WiFi que el ESP32):
    Windows `ipconfig` (Adaptador Wi-Fi → IPv4) · Mac `ipconfig getifaddr en0` · Linux `hostname -I`.
 2. Copien `esp32/secretos.example.h` como `esp32/secretos.h` junto a su sketch y llenen: WiFi, `TS_WRITE_KEY`, `API_URL` (ej. `http://192.168.1.50:8080/api/lecturas`) y `API_KEY` (la misma `ESP32_API_KEY` del `.env`).
-3. Copien a su firmware las funciones de `esp32/envio_datos.ino` (`enviarThingSpeak` y `enviarAPI`) y **quiten el envío a Ubidots**.
+3. Copien a su firmware las funciones de `esp32/envio_datos.ino` (`conectarWiFi`, `enviarThingSpeak` y `enviarAPI`) y **quiten el envío a Ubidots**.
 4. En el `loop()`, cada 20 s, llamen a las dos funciones (el ejemplo está al final del archivo).
 5. Monitor serie: debe salir `ThingSpeak entry_id: 123 · API HTTP: 201`.
 

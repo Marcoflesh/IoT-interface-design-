@@ -106,6 +106,16 @@ Ninguna se manda por chat ni se sube a GitHub (`.env` y `secretos.h` están en `
 - `docker compose up` real (sin acceso a Docker Hub), SELinux, firewalld y `sudo mariadb` en Fedora real.
 - ThingSpeak real y el ESP32 físico.
 
+## Sensores reales y conexión del ESP32 (2026-11-23)
+- Sensores confirmados: ESP32-WROOM-32 DevKit 38 pines, PH-4502C (pH), Keyestudio TDS V1 (conductividad), DS18B20 (temperatura), HC-SR04T (nivel), TSW-10 (turbidez, **falta comprarlo**).
+- Nuevo `esp32/README.md`: tabla de hardware, avisos de PCB (ADC1 con WiFi, echo de 5 V), paso a paso ESP32 → laptop, red del Tec y tabla de fallas.
+- Nuevo `esp32/prueba_red/prueba_red.ino`: prueba WiFi, internet, `/api/salud` y un POST (`esp32-prueba-red`), cada 30 s.
+- `envio_datos.ino`: `conectarWiFi()` con red normal o WPA2-Enterprise (PEAP, `WIFI_EMPRESARIAL` + `WIFI_USUARIO` en `secretos.h`).
+- `.gitignore` cubre `esp32/**/secretos.h`.
+- Documento de contexto (Claude Doc): https://claude.ai/artifact/PWt5AtjHv4iLadoLSZRJDB
+- **No compilado**: los sketches no se pudieron compilar en el entorno (instalar arduino-cli fue denegado). La firma `WiFi.begin(ssid, WPA2_AUTH_PEAP, identidad, usuario, clave)` es la del core 2.0.3+; confirmar al compilar.
+- Abierto: sin TSW-10 el semáforo queda gris (falta una variable); el nivel no está en página, API ni base; el laboratorio sigue modelando SEN0189 y Gravity TDS, no TSW-10 ni Keyestudio.
+
 ## Pendiente del equipo
 - Responder el banco de preguntas y ajustar los supuestos de `esp32-virtual.js` (divisores, fórmulas, pines).
 - FEDORA.md Pasos 1 a 10 con el hardware real; borrar datos `esp32-sim` antes de medir.

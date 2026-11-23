@@ -44,4 +44,7 @@
 | R29 | Usuario | Resolver error 1045 de root al preparar MariaDB en Fedora | `lib-mariadb.sh`, FEDORA.md (contraseñas, SHOW TABLES, recuperación) | ✅ Hecho (reproducido y probado) |
 | R30 | Usuario | Conectar ThingSpeak con MariaDB | Puente `puente-thingspeak.js` + migración 003 + perfil `thingspeak`; FEDORA.md Paso 11 | ✅ Hecho (probado con ThingSpeak falso) |
 | R31 | Usuario | Guía equivalente a FEDORA.md para Windows y PowerShell | WINDOWS.md + `scripts/windows/*.ps1` + puertos configurables | ✅ Hecho (SQL probado; .ps1 sin ejecutar) |
+| R32 | Usuario | Documento con el contexto de la página y lo que hace el ESP32 | Claude Doc "Monitoreo de calidad del agua · Qué hace la página y el ESP32" (diagrama de flujo, sensores, semáforo, pantallas, datos, estado) | ✅ Hecho |
+| R33 | Usuario | Registrar los sensores reales (TSW-10, Keyestudio TDS V1, DS18B20, PH-4502C, HC-SR04T) | `esp32/README.md`, documento de contexto | ✅ Hecho (TSW-10 pendiente de compra; nivel aún no integrado) |
+| R34 | Usuario | Paso a paso para conectar el ESP32 a la IP de la laptop o a la red del Tec | `esp32/README.md`, `prueba_red.ino`, `conectarWiFi()` con WPA2-Enterprise, sección en el documento | ⚠️ Escrito, sin compilar ni probar en hardware |
 | R20 | Spec §6 Fase 6 | Analizar datos y tendencias | Vista `resumen_diario`, consultas SQL, Adminer, exportar CSV | ✅ Hecho |
