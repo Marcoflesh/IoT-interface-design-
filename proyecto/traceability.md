@@ -48,3 +48,4 @@
 | R33 | Usuario | Registrar los sensores reales (TSW-10, Keyestudio TDS V1, DS18B20, PH-4502C, HC-SR04T) | `esp32/README.md`, documento de contexto | ✅ Hecho (TSW-10 pendiente de compra; nivel aún no integrado) |
 | R34 | Usuario | Paso a paso para conectar el ESP32 a la IP de la laptop o a la red del Tec | `esp32/README.md`, `prueba_red.ino`, `conectarWiFi()` con WPA2-Enterprise, sección en el documento | ⚠️ Escrito, sin compilar ni probar en hardware |
 | R20 | Spec §6 Fase 6 | Analizar datos y tendencias | Vista `resumen_diario`, consultas SQL, Adminer, exportar CSV | ✅ Hecho |
+| R35 | Usuario | Saber si laptop y ESP32 están enlazados en la red Tec-IoT | Respuesta paso a paso con `probar-conexion.sh`, `prueba_red.ino` y `ping` | ⏳ Falta que el equipo lo corra |

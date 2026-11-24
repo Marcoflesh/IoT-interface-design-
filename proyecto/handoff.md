@@ -112,6 +112,7 @@ Ninguna se manda por chat ni se sube a GitHub (`.env` y `secretos.h` están en `
 - Nuevo `esp32/prueba_red/prueba_red.ino`: prueba WiFi, internet, `/api/salud` y un POST (`esp32-prueba-red`), cada 30 s.
 - `envio_datos.ino`: `conectarWiFi()` con red normal o WPA2-Enterprise (PEAP, `WIFI_EMPRESARIAL` + `WIFI_USUARIO` en `secretos.h`).
 - `.gitignore` cubre `esp32/**/secretos.h`.
+- Red elegida para laptop y ESP32: **Tec-IoT** (2026-11-24). Verificar enlace con `probar-conexion.sh` (IP + API_URL) y `prueba_red.ino` ([3] OK y [4] 201). Si [2] OK pero [3] falla con firewall abierto, la red aísla clientes → ThingSpeak + puente.
 - Documento de contexto (Claude Doc): https://claude.ai/artifact/PWt5AtjHv4iLadoLSZRJDB
 - **No compilado**: los sketches no se pudieron compilar en el entorno (instalar arduino-cli fue denegado). La firma `WiFi.begin(ssid, WPA2_AUTH_PEAP, identidad, usuario, clave)` es la del core 2.0.3+; confirmar al compilar.
 - Abierto: sin TSW-10 el semáforo queda gris (falta una variable); el nivel no está en página, API ni base; el laboratorio sigue modelando SEN0189 y Gravity TDS, no TSW-10 ni Keyestudio.
