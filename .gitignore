@@ -1,6 +1,6 @@
 .DS_Store
 node_modules/
-esp32/**/secretos.h
-esp32/secretos.h
+# Llaves y WiFi del ESP32, en cualquier carpeta
+secretos.h
 .env
 respaldos/

@@ -134,6 +134,7 @@ Ninguna se manda por chat ni se sube a GitHub (`.env` y `secretos.h` están en `
 - Migración 005: `lecturas.distancia` DECIMAL(6,1) cm. API valida 0 a 600 (cuenta como lectura), GET la devuelve, puente lee field5, `ver-mariadb` la muestra.
 - Pruebas: API 16/16 con MariaDB real. Firmware sin compilar (sin arduino-cli en el entorno).
 - El ESP32 está conectado por USB a la laptop de otro compañero (solo para subir código y ver el monitor serie). `API_URL` debe llevar la IP de la laptop que corre Docker (la de Marco), no la de la laptop del USB; la `ESP32_API_KEY` se le pasa al compañero en privado.
+- Marco tenía un `secretos.h` suelto en la raíz del repo, fuera de `.gitignore` → ahora se ignora `secretos.h` en cualquier carpeta. Su clon está en `~/IoT-interface-design-/IoT-interface-design-` (carpeta anidada).
 - Consecuencia: sin pH ni turbidez el semáforo queda gris. Pendiente decidir si evalúa solo lo disponible.
 
 ## Pendiente del equipo
