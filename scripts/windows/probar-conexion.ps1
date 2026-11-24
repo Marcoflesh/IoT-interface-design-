@@ -40,14 +40,15 @@ try {
 } catch { Write-Mal 'La API no responde en /api/salud.'; Write-Info 'docker logs calidad-agua-api' }
 
 $llave = Get-EnvValor 'ESP32_API_KEY'
-$cuerpo = @{ dispositivo = 'prueba-terminal'; ph = 7.2; turbidez = 1.3; conductividad = 640; temperatura = 22.5 } | ConvertTo-Json
+# Cuerpo vacío: la API revisa la llave antes que los datos. 400 = llave buena (no se guarda nada), 401 = mala.
 try {
-  $r = Invoke-RestMethod "$Base/api/lecturas" -Method Post -ContentType 'application/json' -Headers @{ 'X-API-Key' = $llave } -Body $cuerpo -TimeoutSec 5
-  Write-Ok "POST de prueba guardado (id $($r.id)), igual que lo hará el ESP32"
+  Invoke-RestMethod "$Base/api/lecturas" -Method Post -ContentType 'application/json' -Headers @{ 'X-API-Key' = $llave } -Body '{}' -TimeoutSec 5 | Out-Null
+  Write-Mal 'La API aceptó un cuerpo vacío (no debería).'
 } catch {
   $codigo = 0; if ($_.Exception.Response) { $codigo = [int]$_.Exception.Response.StatusCode }
-  Write-Mal "POST de prueba respondió $codigo."
-  if ($codigo -eq 401) { Write-Info 'ESP32_API_KEY del .env no coincide con la de la API: docker compose up -d --force-recreate api' }
+  if ($codigo -eq 400) { Write-Ok 'La API acepta tu ESP32_API_KEY (prueba sin guardar nada)' }
+  elseif ($codigo -eq 401) { Write-Mal 'La API no acepta tu ESP32_API_KEY.'; Write-Info 'docker compose up -d --force-recreate api' }
+  else { Write-Mal "La API respondió $codigo." }
 }
 try {
   Invoke-RestMethod "$Base/api/lecturas" -Method Post -ContentType 'application/json' -Headers @{ 'X-API-Key' = 'llave-incorrecta-123456' } -Body '{"ph":7}' -TimeoutSec 5 | Out-Null
@@ -59,8 +60,9 @@ try {
 
 Write-Host '== 4. MariaDB (dentro de Docker)'
 $usuario = Get-EnvValor 'DB_USER' 'agua'; $clave = Get-EnvValor 'DB_PASSWORD'; $base = Get-EnvValor 'DB_NAME' 'calidad_agua'
-$ultima = Invoke-MariaDB "SELECT CONCAT(id, ' · ', fecha, ' UTC · pH ', ph, ' · ', dispositivo) FROM lecturas ORDER BY id DESC LIMIT 1;" $usuario $clave $base
-if ($LASTEXITCODE -eq 0 -and $ultima) { Write-Ok "Última fila: $ultima" }
+$ultima = Invoke-MariaDB "SELECT CONCAT(id, ' · ', fecha, ' UTC · ', IFNULL(conductividad, '-'), ' uS/cm · ', IFNULL(temperatura, '-'), ' C · ', origen) FROM lecturas ORDER BY fecha DESC, id DESC LIMIT 1;" $usuario $clave $base
+if ($LASTEXITCODE -eq 0 -and $ultima) { Write-Ok "Última lectura de esp32-1: $ultima" }
+elseif ($LASTEXITCODE -eq 0) { Write-Ok 'MariaDB responde; todavía no hay lecturas del ESP32.' }
 else { Write-Mal "No pude entrar a MariaDB como '$usuario'."; Write-Info 'Revisa DB_PASSWORD (si la cambiaste después del primer arranque, ver WINDOWS.md, Problemas).' }
 $puerto = Get-EnvValor 'DB_PUERTO_LOCAL' '3306'
 Write-Info "DBeaver: localhost, puerto $puerto, base $base, usuario $usuario"
@@ -81,7 +83,6 @@ else { Write-Aviso "No hay regla de firewall propia para el $Puerto (el ESP32 po
 Write-Host ''
 if ($script:Problemas -eq 0) {
   Write-Host 'Todo listo. Prueba desde tu celular (misma WiFi): ' -NoNewline; Write-Host "http://${ip}:${Puerto}/api/salud" -ForegroundColor Cyan
-  Write-Host "Las lecturas de prueba quedaron con dispositivo = 'prueba-terminal'."
 } else {
   Write-Host "$($script:Problemas) problema(s). Arregla el primero en rojo y vuelve a correr este script."
   exit 1

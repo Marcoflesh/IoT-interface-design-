@@ -25,7 +25,10 @@ function aISO(fecha) {
 
 const ERROR_BD = { error: "La API no puede conectarse a MariaDB." };
 
-function crearApp(pool, apiKey) {
+// tsCanal: Channel ID de ThingSpeak. Si el ESP32 manda el ts_entry_id de la misma lectura,
+// se guarda con (canal, entry_id) y el puente ya no la vuelve a copiar.
+function crearApp(pool, apiKey, tsCanal = null) {
+  const canal = /^\d+$/.test(String(tsCanal || "")) ? Number(tsCanal) : null;
   const app = express();
   app.disable("x-powered-by");
   app.use(express.json({ limit: "2kb" }));
@@ -51,7 +54,7 @@ function crearApp(pool, apiKey) {
     if (dispositivo === undefined) return res.status(400).json({ error: "dispositivo inválido." });
     try {
       const filas = await pool.query(
-        "SELECT id, fecha, dispositivo, ph, turbidez, conductividad, temperatura, distancia, rssi " +
+        "SELECT id, fecha, dispositivo, ph, turbidez, conductividad, temperatura, rssi " +
         "FROM lecturas " + (dispositivo ? "WHERE dispositivo = ? " : "") +
         "ORDER BY id DESC LIMIT ?",
         dispositivo ? [dispositivo, limite] : [limite]
@@ -92,15 +95,19 @@ function crearApp(pool, apiKey) {
       // Registra el dispositivo la primera vez y actualiza su última conexión.
       await conexion.query(
         "INSERT INTO dispositivos (id, descripcion, simulado, firmware, ultima_conexion, ultima_ip) " +
-        "VALUES (?, 'Registrado automáticamente', ?, ?, UTC_TIMESTAMP(3), ?) " +
+        "VALUES (?, 'ESP32 del equipo', 0, ?, UTC_TIMESTAMP(3), ?) " +
         "ON DUPLICATE KEY UPDATE ultima_conexion = VALUES(ultima_conexion), ultima_ip = VALUES(ultima_ip), " +
         "firmware = COALESCE(VALUES(firmware), firmware)",
-        [l.dispositivo, l.simulado ? 1 : 0, l.firmware, ip]
+        [l.dispositivo, l.firmware, ip]
       );
       const r = await conexion.query(
-        "INSERT INTO lecturas (fecha, dispositivo, ph, turbidez, conductividad, temperatura, distancia, " +
-        "rssi, ph_v, turbidez_v, conductividad_v) VALUES (UTC_TIMESTAMP(3), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [l.dispositivo, l.ph, l.turbidez, l.conductividad, l.temperatura, l.distancia, l.rssi, l.ph_v, l.turbidez_v, l.conductividad_v]
+        "INSERT INTO lecturas (fecha, dispositivo, origen, ts_canal, ts_entry_id, ph, turbidez, conductividad, temperatura, " +
+        "rssi, ph_v, turbidez_v, conductividad_v) VALUES (UTC_TIMESTAMP(3), ?, 'api', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+        // Si el puente ya la copió de ThingSpeak, se completa esa misma fila en vez de duplicarla.
+        "ON DUPLICATE KEY UPDATE id = LAST_INSERT_ID(id), rssi = VALUES(rssi), ph_v = VALUES(ph_v), " +
+        "turbidez_v = VALUES(turbidez_v), conductividad_v = VALUES(conductividad_v)",
+        [l.dispositivo, l.ts_entry_id && canal ? canal : null, l.ts_entry_id && canal ? l.ts_entry_id : null,
+          l.ph, l.turbidez, l.conductividad, l.temperatura, l.rssi, l.ph_v, l.turbidez_v, l.conductividad_v]
       );
       await conexion.commit();
       res.status(201).json({ id: r.insertId });

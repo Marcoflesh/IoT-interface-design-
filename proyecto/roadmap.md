@@ -44,8 +44,8 @@
 - [x] Elegir la red de la demo: Tec-IoT.
 - [ ] Compilar `esp32/prueba_red/prueba_red.ino` y correrlo en Tec-IoT.
 - [ ] Comprar e instalar el TSW-10; mientras tanto, decidir si el semáforo evalúa solo pH y conductividad.
-- [x] Guardar la distancia del HC-SR04T (migración 005, field5).
-- [ ] Mostrar el nivel en la página (falta la altura del tanque).
+- [x] Un solo dispositivo `esp32-1`; ThingSpeak y API sin duplicados (migración 006).
+- [x] Quitar la distancia de la base (el HC-SR04T solo se imprime en el monitor serie).
 - [ ] Actualizar el laboratorio a los sensores reales (TSW-10, Keyestudio TDS V1).
 - [ ] Crear `.env` y levantar `docker compose` (Guía, Pasos 1 y 2).
 - [ ] Crear canal ThingSpeak con field1 a field4 (Paso 3).

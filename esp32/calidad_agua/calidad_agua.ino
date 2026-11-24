@@ -4,8 +4,11 @@
  * Es el programa del equipo (TDS, DS18B20 y HC-SR04T) con lo necesario para que
  * las lecturas lleguen a MariaDB (por la API de la laptop) y a ThingSpeak:
  *   - Manda el header X-API-Key. Sin él la API responde 401 y no guarda nada.
- *   - Usa los nombres que entiende la API: conductividad (µS/cm), temperatura (°C)
- *     y distancia (cm). pH y turbidez van como null hasta conectar esos sensores.
+ *   - Usa los nombres que entiende la API: conductividad (µS/cm) y temperatura (°C).
+ *     pH y turbidez van como null hasta conectar esos sensores.
+ *   - Primero publica en ThingSpeak y manda a la API el entry_id que le dio: así el
+ *     puente no copia esa lectura otra vez y en MariaDB queda una sola fila en esp32-1.
+ *   - La distancia del HC-SR04T solo se muestra en el monitor serie (no se guarda).
  *   - Si un sensor falla manda null, nunca un valor viejo ni 0.
  *   - Envía cada 20 s (ThingSpeak gratis pide mínimo 15 s) e imprime lo que responde la API.
  *   - WiFi y llaves viven en secretos.h, que no se sube a GitHub.
@@ -23,8 +26,8 @@
 
 // ---------- CONFIGURACIÓN ----------
 
-const char* DISPOSITIVO = "esp32-1";   // así aparece en MariaDB
-const char* FIRMWARE    = "v1.1.0";    // súbanla cuando cambien el código
+const char* DISPOSITIVO = "esp32-1";   // el único dispositivo que acepta la API
+const char* FIRMWARE    = "v1.2.0";    // súbanla cuando cambien el código
 
 // Pines
 #define TDS_PIN   36    // ADC1 (VP): sigue funcionando con el WiFi encendido
@@ -50,7 +53,7 @@ int analogBufferIndex = 0;
 float temperatura   = NAN;    // °C
 float conductividad = NAN;    // µS/cm
 float tds           = NAN;    // ppm (conductividad x 0.5)
-float distancia     = NAN;    // cm del sensor a la superficie del agua
+float distancia     = NAN;    // cm del sensor a la superficie (solo monitor serie)
 
 unsigned long lastTdsSample = 0;
 unsigned long lastRead = 0;
@@ -97,13 +100,14 @@ String numeroJSON(float v, int decimales) {
 }
 
 // API de la laptop → MariaDB. Regresa el código HTTP (201 = guardado).
-int enviarAPI() {
+// entradaTS: entry_id que dio ThingSpeak a esta lectura (0 si no se publicó).
+int enviarAPI(long entradaTS) {
   String json = "{\"dispositivo\":\"" + String(DISPOSITIVO) + "\"";
   json += ",\"ph\":null";
   json += ",\"turbidez\":null";
   json += ",\"conductividad\":" + numeroJSON(conductividad, 1);
   json += ",\"temperatura\":" + numeroJSON(temperatura, 2);
-  json += ",\"distancia\":" + numeroJSON(distancia, 1);
+  if (entradaTS > 0) json += ",\"ts_entry_id\":" + String(entradaTS);
   json += ",\"rssi\":" + String(WiFi.RSSI());
   json += ",\"firmware\":\"" + String(FIRMWARE) + "\"}";
 
@@ -129,36 +133,39 @@ int enviarAPI() {
 }
 
 // ThingSpeak → lo que lee la página en GitHub Pages. Se salta si no hay Write Key.
-// field3 = conductividad · field4 = temperatura · field5 = distancia
-void enviarThingSpeak() {
-  if (strlen(TS_WRITE_KEY) < 10 || strncmp(TS_WRITE_KEY, "PEGAR", 5) == 0) return;
+// field3 = conductividad · field4 = temperatura (field1 pH y field2 turbidez cuando los conecten)
+// Regresa el entry_id que dio ThingSpeak (0 = rechazada o no enviada).
+long enviarThingSpeak() {
+  if (strlen(TS_WRITE_KEY) < 10 || strncmp(TS_WRITE_KEY, "PEGAR", 5) == 0) return 0;
 
   String url = "https://api.thingspeak.com/update?api_key=";
   url += TS_WRITE_KEY;
   if (!isnan(conductividad)) url += "&field3=" + String(conductividad, 0);
   if (!isnan(temperatura))   url += "&field4=" + String(temperatura, 1);
-  if (!isnan(distancia))     url += "&field5=" + String(distancia, 1);
 
   WiFiClientSecure cliente;
   cliente.setInsecure();   // prototipo: HTTPS sin validar certificado
   HTTPClient http;
   http.begin(cliente, url);
   int codigo = http.GET();
+  long entrada = 0;
   Serial.print("ThingSpeak -> ");
   if (codigo == 200) {
+    entrada = http.getString().toInt();   // 0 = la rechazó por mandar muy seguido
     Serial.print("entrada ");
-    Serial.println(http.getString());   // 0 = la rechazó por mandar muy seguido
+    Serial.println(entrada);
   } else {
     Serial.println(codigo);
   }
   http.end();
+  return entrada;
 }
 
 void enviarDatos() {
   conectarWiFi();
   if (WiFi.status() != WL_CONNECTED) return;
-  enviarAPI();
-  enviarThingSpeak();
+  long entrada = enviarThingSpeak();   // primero ThingSpeak, para mandar su entry_id a la API
+  enviarAPI(entrada);
 }
 
 // ---------- SENSOR DE TEMPERATURA (DS18B20) ----------

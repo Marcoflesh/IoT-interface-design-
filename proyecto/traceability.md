@@ -50,4 +50,9 @@
 | R35 | Usuario | Saber si laptop y ESP32 están enlazados en la red Tec-IoT | Respuesta paso a paso con `probar-conexion.sh`, `prueba_red.ino` y `ping` | ⏳ Falta que el equipo lo corra |
 | R36 | Usuario | Eliminar el ESP32 simulado y usar solo el real | Borrado de laboratorio/simulador, migración 004, API rechaza simulados, guías actualizadas | ✅ Hecho (probado con MariaDB real y Chrome) |
 | R37 | Usuario | El ESP32 real no aparece en la terminal | Causa: sin `X-API-Key` (401) y campos `tds`/`distancia`. Firmware `calidad_agua.ino` corregido | ⚠️ Corregido, falta subirlo al ESP32 |
-| R38 | Usuario (firmware) | Guardar la distancia del HC-SR04T | Migración 005, `validar.js`, API, puente field5, `ver-mariadb` | ✅ Hecho (probado con MariaDB real) |
+| R38 | Usuario (firmware) | Guardar la distancia del HC-SR04T | Migración 005 | 🗑️ Retirado (R40) |
+| R39 | Usuario | Solo `esp32-1`: borrar `esp32-sim`, `prueba-terminal`, `esp-32-sim`; ThingSpeak llega al mismo `esp32-1` sin duplicar | Migración 006, `validar.js`, `app.js` (ts_entry_id), puente, firmware v1.2.0, `probar-conexion` sin escribir | ✅ Hecho (19/19 con MariaDB real) |
+| R40 | Usuario | Quitar `distancia` de la base | Migración 006 (`DROP COLUMN`), API, puente, `ver-mariadb`, firmware | ✅ Hecho |
+| R41 | Usuario | Temperatura en la base | Columna `lecturas.temperatura` (desde 001); el firmware la manda | ✅ Ya existía |
+| R42 | Usuario | Configurar la página para un solo dispositivo | Sin campo "Dispositivo en MariaDB" en Ajustes, sin filtro en `datos.js` | ✅ Hecho (Chrome) |
+| R43 | Usuario | Eliminar el laboratorio | Ya retirado en R36 | ✅ Hecho |

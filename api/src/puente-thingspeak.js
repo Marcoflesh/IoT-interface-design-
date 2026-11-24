@@ -1,15 +1,16 @@
 // Puente ThingSpeak → MariaDB.
 // Cada PUENTE_INTERVALO segundos lee las lecturas nuevas del canal y las copia a la tabla lecturas
-// (origen = 'thingspeak'). No duplica: usa el entry_id de ThingSpeak. Si la laptop estuvo apagada,
+// (origen = 'thingspeak') como dispositivo esp32-1. No duplica: usa el entry_id de ThingSpeak, también
+// el que el ESP32 manda junto con su lectura directa a la API. Si la laptop estuvo apagada,
 // al volver trae lo que falta (hasta las últimas 8000 entradas que guarda el canal) con su hora original.
 //
 //   node src/puente-thingspeak.js
 //
-// Variables: THINGSPEAK_CHANNEL_ID, THINGSPEAK_READ_KEY (si el canal es privado), PUENTE_DISPOSITIVO,
+// Variables: THINGSPEAK_CHANNEL_ID, THINGSPEAK_READ_KEY (si el canal es privado),
 // PUENTE_INTERVALO, TS_CAMPO_PH/TURBIDEZ/CONDUCTIVIDAD/TEMPERATURA y las DB_* de la API.
 "use strict";
 
-const { validarLectura } = require("./validar");
+const { validarLectura, DISPOSITIVO } = require("./validar");
 
 const MAX_THINGSPEAK = 8000;   // lo más que entrega ThingSpeak por consulta
 
@@ -20,14 +21,12 @@ function aNumero(v) {
 }
 
 // Una entrada de ThingSpeak → fila para MariaDB (o el motivo por el que se descarta).
-function feedALectura(feed, campos, dispositivo) {
+function feedALectura(feed, campos) {
   const { lectura, error } = validarLectura({
-    dispositivo,
     ph: aNumero(feed[campos.ph]),
     turbidez: aNumero(feed[campos.turbidez]),
     conductividad: aNumero(feed[campos.conductividad]),
-    temperatura: aNumero(feed[campos.temperatura]),
-    distancia: aNumero(feed[campos.distancia])
+    temperatura: aNumero(feed[campos.temperatura])
   });
   if (error) return { error };
   const fecha = new Date(feed.created_at);
@@ -49,8 +48,10 @@ async function leerFeed(cfg, resultados) {
   return json.feeds;
 }
 
+// Última entrada que copió el puente. Las que el ESP32 mandó directo (origen api) no cuentan:
+// así, si una lectura no llegó a la API, el puente todavía la copia.
 async function ultimoEntry(pool, canal) {
-  const filas = await pool.query("SELECT COALESCE(MAX(ts_entry_id), 0) AS ultimo FROM lecturas WHERE ts_canal = ?", [canal]);
+  const filas = await pool.query("SELECT COALESCE(MAX(ts_entry_id), 0) AS ultimo FROM lecturas WHERE ts_canal = ? AND origen = 'thingspeak'", [canal]);
   return Number(filas[0].ultimo);
 }
 
@@ -61,7 +62,17 @@ async function sincronizar(pool, cfg, log = () => {}) {
   // Primera vez o hueco (la laptop estuvo apagada): pedir todo el historial disponible.
   if (feeds.length && feeds[0].entry_id > ultimo + 1) feeds = await leerFeed(cfg, MAX_THINGSPEAK);
 
-  const nuevos = feeds.filter((f) => f.entry_id > ultimo);
+  // Las que ya están (copiadas antes o mandadas directo por el ESP32 con su ts_entry_id) se saltan.
+  const ids = feeds.map((f) => f.entry_id).filter(Number.isInteger);
+  const yaEstan = new Set();
+  if (ids.length) {
+    const filas = await pool.query(
+      "SELECT ts_entry_id FROM lecturas WHERE ts_canal = ? AND ts_entry_id BETWEEN ? AND ?",
+      [cfg.canal, Math.min(...ids), Math.max(...ids)]
+    );
+    filas.forEach((f) => yaEstan.add(Number(f.ts_entry_id)));
+  }
+  const nuevos = feeds.filter((f) => f.entry_id > ultimo && !yaEstan.has(f.entry_id));
   if (!nuevos.length) return { copiadas: 0, descartadas: 0, ultimo };
 
   await pool.query(
@@ -72,7 +83,7 @@ async function sincronizar(pool, cfg, log = () => {}) {
 
   let copiadas = 0, descartadas = 0, mayor = ultimo;
   for (const feed of nuevos) {
-    const fila = feedALectura(feed, cfg.campos, cfg.dispositivo);
+    const fila = feedALectura(feed, cfg.campos);
     if (fila.error) {
       descartadas++;
       log(`  entry_id ${feed.entry_id} descartado: ${fila.error}`);
@@ -80,9 +91,9 @@ async function sincronizar(pool, cfg, log = () => {}) {
     }
     const l = fila.lectura;
     const r = await pool.query(
-      "INSERT IGNORE INTO lecturas (fecha, dispositivo, origen, ts_canal, ts_entry_id, ph, turbidez, conductividad, temperatura, distancia) " +
-      "VALUES (?, ?, 'thingspeak', ?, ?, ?, ?, ?, ?, ?)",
-      [fila.fecha, l.dispositivo, cfg.canal, fila.entryId, l.ph, l.turbidez, l.conductividad, l.temperatura, l.distancia]
+      "INSERT IGNORE INTO lecturas (fecha, dispositivo, origen, ts_canal, ts_entry_id, ph, turbidez, conductividad, temperatura) " +
+      "VALUES (?, ?, 'thingspeak', ?, ?, ?, ?, ?, ?)",
+      [fila.fecha, l.dispositivo, cfg.canal, fila.entryId, l.ph, l.turbidez, l.conductividad, l.temperatura]
     );
     copiadas += Number(r.affectedRows);
     mayor = Math.max(mayor, fila.entryId);
@@ -101,14 +112,13 @@ function configDesdeEntorno(env = process.env) {
     base: (env.THINGSPEAK_URL || "https://api.thingspeak.com").replace(/\/$/, ""),
     canal: env.THINGSPEAK_CHANNEL_ID || "",
     readKey: env.THINGSPEAK_READ_KEY || "",
-    dispositivo: env.PUENTE_DISPOSITIVO || "esp32-1-ts",
+    dispositivo: DISPOSITIVO,   // lo copiado de ThingSpeak va al mismo esp32-1
     intervalo: Math.max(15, Number(env.PUENTE_INTERVALO || 60)),
     campos: {
       ph: env.TS_CAMPO_PH || "field1",
       turbidez: env.TS_CAMPO_TURBIDEZ || "field2",
       conductividad: env.TS_CAMPO_CONDUCTIVIDAD || "field3",
-      temperatura: env.TS_CAMPO_TEMPERATURA || "field4",
-      distancia: env.TS_CAMPO_DISTANCIA || "field5"
+      temperatura: env.TS_CAMPO_TEMPERATURA || "field4"
     }
   };
 }
@@ -119,14 +129,6 @@ async function principal() {
   const cfg = configDesdeEntorno();
   if (!/^\d+$/.test(cfg.canal)) {
     console.error("Falta THINGSPEAK_CHANNEL_ID (número del canal) en el .env.");
-    process.exit(1);
-  }
-  if (!/^[A-Za-z0-9_-]{1,32}$/.test(cfg.dispositivo)) {
-    console.error("PUENTE_DISPOSITIVO solo lleva letras, números, - o _.");
-    process.exit(1);
-  }
-  if (/^esp32-sim/.test(cfg.dispositivo)) {
-    console.error("PUENTE_DISPOSITIVO=" + cfg.dispositivo + " era para el simulador, que ya se retiró. Usa esp32-1-ts en el .env.");
     process.exit(1);
   }
   const pool = mariadb.createPool({

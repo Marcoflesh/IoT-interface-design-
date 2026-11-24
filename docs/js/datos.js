@@ -65,8 +65,8 @@
   }
 
   function leerAPI(config) {
-    var disp = config.api && config.api.dispositivo ? "&dispositivo=" + encodeURIComponent(config.api.dispositivo) : "";
-    return fetch(baseAPI(config) + "/api/lecturas?limit=" + config.resultados + disp, { cache: "no-store" })
+    // La base solo tiene un dispositivo (esp32-1): lo directo y lo copiado de ThingSpeak.
+    return fetch(baseAPI(config) + "/api/lecturas?limit=" + config.resultados, { cache: "no-store" })
       .then(function (r) {
         if (r.status === 404) throw new Error("No se encontró la API. Solo funciona en localhost con Docker (http://localhost:8080).");
         if (r.status === 503) throw new Error("La API no puede conectarse a MariaDB. Revisa: docker compose ps");

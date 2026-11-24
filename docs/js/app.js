@@ -72,9 +72,9 @@
       if (guardada) {
         // "simulador" ya no existe: quien lo tenía guardado vuelve a la fuente por defecto.
         if (FUENTES.indexOf(guardada.fuente) >= 0) c.fuente = guardada.fuente;
-        if (guardada.api && /^esp32-sim/.test(guardada.api.dispositivo || "")) guardada.api.dispositivo = "";
         c.thingspeak = Object.assign(c.thingspeak, guardada.thingspeak || {});
         c.api = Object.assign(c.api || {}, guardada.api || {});
+        delete c.api.dispositivo;   // ya no hay filtro: solo existe esp32-1
         c.intervaloSeg = guardada.intervaloSeg || c.intervaloSeg;
         c.criticoRojo = !!guardada.criticoRojo;
         if (guardada.umbrales) {
@@ -199,7 +199,7 @@
     var c = estado.config;
     $("#nav-fuente").textContent = c.fuente === "thingspeak"
       ? "Fuente: ThingSpeak · canal " + (c.thingspeak.channelId || "sin configurar")
-      : c.fuente === "api" ? "Fuente: MariaDB (API local)" + (c.api && c.api.dispositivo ? " · " + c.api.dispositivo : "")
+      : c.fuente === "api" ? "Fuente: MariaDB (API local) · esp32-1"
       : "Fuente: demo (datos simulados)";
   }
 
@@ -555,7 +555,6 @@
     f.fuente.value = c.fuente;
     f.channelId.value = c.thingspeak.channelId || "";
     f.readApiKey.value = c.thingspeak.readApiKey || "";
-    f.apiDispositivo.value = (c.api && c.api.dispositivo) || "";
     f.intervaloSeg.value = c.intervaloSeg;
     f.criticoRojo.checked = !!c.criticoRojo;
     S.CLAVES.forEach(function (k) {
@@ -572,7 +571,6 @@
     c.fuente = f.fuente.value || "demo";
     c.thingspeak.channelId = f.channelId.value.trim();
     c.thingspeak.readApiKey = f.readApiKey.value.trim();
-    c.api = Object.assign({}, c.api, { dispositivo: f.apiDispositivo.value.trim() });
     c.intervaloSeg = parseInt(f.intervaloSeg.value, 10) || 20;
     c.criticoRojo = f.criticoRojo.checked;
     S.CLAVES.forEach(function (k) {
@@ -586,7 +584,6 @@
 
   function validar(c) {
     if (c.fuente === "thingspeak" && !/^\d+$/.test(c.thingspeak.channelId)) return "El Channel ID debe ser un número.";
-    if (c.api.dispositivo && !/^[A-Za-z0-9_-]{1,32}$/.test(c.api.dispositivo)) return "El dispositivo solo lleva letras, números, - o _ (ej. esp32-1).";
     if (c.intervaloSeg < 15) return "El intervalo mínimo es 15 s (límite de ThingSpeak gratis).";
     for (var i = 0; i < S.CLAVES.length; i++) {
       var k = S.CLAVES[i], u = c.umbrales[k];

@@ -7,7 +7,8 @@
  *   1) Que el ESP32 entre al WiFi (normal o con usuario, según secretos.h)
  *   2) Que tenga internet (ThingSpeak)
  *   3) Que vea a la laptop:     GET  http://IP:8080/api/salud      → 200
- *   4) Que la API lo acepte:    POST http://IP:8080/api/lecturas   → 201
+ *   4) Que la llave sea la buena: POST vacío a /api/lecturas → 400 (llave OK) o 401 (llave mal).
+ *      No guarda ninguna lectura: en MariaDB solo entran las del firmware real (esp32-1).
  * Y lo repite cada 30 s, para que puedan arreglar el firewall o la IP y ver el cambio sin resubir.
  *
  * Copien ../secretos.h dentro de esta carpeta (prueba_red/secretos.h). Está en .gitignore.
@@ -17,10 +18,6 @@
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include "secretos.h"
-
-// La lectura de prueba se guarda con este dispositivo para no mezclarse con esp32-1.
-const char* DISPOSITIVO_PRUEBA = "esp32-prueba-red";
-const bool ENVIAR_LECTURA_PRUEBA = true;
 
 String urlSalud() {
   String u = API_URL;
@@ -82,25 +79,20 @@ bool probarSalud() {
   return false;
 }
 
-void probarLectura() {
-  String cuerpo = "{\"dispositivo\":\"";
-  cuerpo += DISPOSITIVO_PRUEBA;
-  cuerpo += "\",\"ph\":7.00,\"turbidez\":null,\"conductividad\":400.0,\"temperatura\":22.0";
-  cuerpo += ",\"rssi\":" + String(WiFi.RSSI());
-  cuerpo += ",\"firmware\":\"prueba-red\"}";
-
+// Manda un cuerpo vacío: la API revisa la llave antes que los datos, así que
+// 400 = llave correcta (y no se guarda nada) · 401 = llave incorrecta.
+void probarLlave() {
   HTTPClient http;
   http.begin(API_URL);
   http.setTimeout(5000);
   http.addHeader("Content-Type", "application/json");
   http.addHeader("X-API-Key", API_KEY);
-  int codigo = http.POST(cuerpo);
-  String respuesta = codigo > 0 ? http.getString() : "";
+  int codigo = http.POST("{}");
   http.end();
 
-  if (codigo == 201)      Serial.println("[4] API: 201 · lectura de prueba guardada en MariaDB");
-  else if (codigo == 401) Serial.println("[4] API: 401 · API_KEY no es igual a ESP32_API_KEY del .env");
-  else                    Serial.printf("[4] API: %d %s\n", codigo, respuesta.c_str());
+  if (codigo == 400)      Serial.println("[4] Llave: OK · la API la acepta (no se guardó nada)");
+  else if (codigo == 401) Serial.println("[4] Llave: MAL · API_KEY no es igual a ESP32_API_KEY del .env");
+  else                    Serial.printf("[4] Llave: respuesta inesperada %d\n", codigo);
 }
 
 void diagnostico() {
@@ -126,7 +118,7 @@ void diagnostico() {
   Serial.printf("    Buscando la laptop en: %s\n", urlSalud().c_str());
 
   probarInternet();
-  if (probarSalud() && ENVIAR_LECTURA_PRUEBA) probarLectura();
+  if (probarSalud()) probarLlave();
 }
 
 void setup() {

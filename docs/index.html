@@ -173,7 +173,7 @@
             <div class="radios">
               <label class="radio"><input type="radio" name="fuente" value="demo"> <span><strong>Demo</strong> · datos simulados para presentar sin hardware</span></label>
               <label class="radio"><input type="radio" name="fuente" value="thingspeak"> <span><strong>ThingSpeak</strong> · lecturas reales del ESP32 (funciona en GitHub Pages)</span></label>
-              <label class="radio"><input type="radio" name="fuente" value="api"> <span><strong>MariaDB</strong> · base de datos propia (solo en localhost con Docker)</span></label>
+              <label class="radio"><input type="radio" name="fuente" value="api"> <span><strong>MariaDB</strong> · lecturas del ESP32 (esp32-1) guardadas en la laptop, solo en localhost con Docker</span></label>
             </div>
             <div class="campos">
               <label class="campo">Channel ID
@@ -182,10 +182,6 @@
               <label class="campo">Read API Key
                 <input type="text" name="readApiKey" autocomplete="off" spellcheck="false" placeholder="ABCD1234EFGH5678…">
                 <span class="campo__ayuda">Déjala vacía si el canal es público.</span>
-              </label>
-              <label class="campo">Dispositivo en MariaDB
-                <input type="text" name="apiDispositivo" autocomplete="off" spellcheck="false" placeholder="vacío = todos">
-                <span class="campo__ayuda">vacío = todos · esp32-1 = enviado directo por el ESP32 · esp32-1-ts = copiado de ThingSpeak por el puente.</span>
               </label>
               <label class="campo">Actualizar cada (segundos)
                 <input type="number" name="intervaloSeg" min="15" max="600" step="1">

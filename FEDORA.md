@@ -99,14 +99,14 @@ El script:
 
 | Tabla o vista | Qué guarda |
 |---|---|
-| `lecturas` | Cada envío: fecha (UTC), dispositivo, pH, turbidez, conductividad, temperatura, RSSI y voltajes crudos de cada sensor |
-| `dispositivos` | Cada ESP32: `esp32-1` (directo) y `esp32-1-ts` (copiado por el puente), firmware, última conexión e IP |
+| `lecturas` | Cada lectura del ESP32: fecha (UTC), pH, turbidez, conductividad, temperatura, origen (`api` o `thingspeak`), entry_id de ThingSpeak, RSSI y voltajes crudos |
+| `dispositivos` | Un solo renglón, `esp32-1` (el ESP32 del equipo): firmware, última conexión e IP |
 | `calibraciones` | Historial de calibraciones por sensor (puntos, pendiente, ordenada, notas) |
 | `schema_migraciones` | Qué migraciones ya se aplicaron |
 | `resumen_diario` (vista) | Promedios, mínimos y máximos por dispositivo y día |
 | `estado_dispositivos` (vista) | Cuántos segundos lleva cada ESP32 sin mandar datos |
 
-**Por qué así:** si alguien obtiene la contraseña de la API, no puede borrar datos ni tablas. Cada origen de datos (directo o copiado por el puente) queda separado por `dispositivo`. Las migraciones numeradas permiten cambiar la base sin perder nada.
+**Por qué así:** si alguien obtiene la contraseña de la API, no puede borrar datos ni tablas. Todo lo del ESP32, llegue directo o copiado de ThingSpeak, queda en `esp32-1` sin duplicados. Las migraciones numeradas permiten cambiar la base sin perder nada.
 
 Puedes correrlo cuantas veces quieras; si cambias la contraseña en `.env`, vuelve a correrlo y la actualiza.
 
@@ -186,11 +186,7 @@ bash scripts/fedora/diagnosticar.sh
 bash scripts/fedora/probar-conexion.sh
 ```
 
-Revisa contenedores, página, API, MariaDB, que se rechace una llave falsa y que responda por la **IP de tu red**. Al final te dice el `API_URL` exacto para el ESP32. La lectura de prueba aparece en DBeaver con `dispositivo = prueba-terminal`. Para borrarla (como administrador):
-
-```bash
-mariadb -u root -p calidad_agua -e "DELETE FROM lecturas WHERE dispositivo = 'prueba-terminal'"
-```
+Revisa contenedores, página, API, MariaDB, que tu `ESP32_API_KEY` sea la buena, que se rechace una llave falsa y que responda por la **IP de tu red**. No guarda ninguna lectura de prueba. Al final te dice el `API_URL` exacto para el ESP32.
 
 Prueba también desde **tu celular conectado a la misma WiFi**: abre `http://IP-DE-TU-LAPTOP:8080/api/salud`. Si ahí carga, el ESP32 también va a llegar.
 
@@ -218,22 +214,22 @@ Prueba también desde **tu celular conectado a la misma WiFi**: abre `http://IP-
    ```
 7. En DBeaver presiona **F5** sobre `lecturas`: ahí están las filas del ESP32 (`dispositivo = esp32-1`). En la página, el semáforo se actualiza solo.
 
-## Paso 10 · Quitar el ESP32 virtual (una sola vez)
+## Paso 10 · Dejar solo el ESP32 real, `esp32-1` (una sola vez)
 
-El simulador se retiró: la página, la API y la base solo trabajan con el ESP32 real. Si alguna vez lo usaste, limpia lo que dejó:
+La página, la API y la base solo trabajan con el ESP32 del equipo, `esp32-1`. Si usaste el simulador o los scripts de prueba viejos, limpia lo que dejaron:
 
 ```bash
 git pull
 bash scripts/fedora/respaldar.sh                      # respaldo antes de borrar
 docker rm -f calidad-agua-simulador 2>/dev/null       # apaga el contenedor viejo si existe
-bash scripts/fedora/preparar-mariadb.sh               # aplica la migración 004: borra esp32-sim y esp32-sim-ts
+bash scripts/fedora/preparar-mariadb.sh               # migraciones 004 y 006: deja solo esp32-1
 docker compose -f docker-compose.fedora.yml up -d --build
-bash scripts/fedora/ver-mariadb.sh                    # ya no debe aparecer ningún esp32-sim
+bash scripts/fedora/ver-mariadb.sh                    # solo debe aparecer esp32-1
 ```
 
 Revisa también:
 
-- En el `.env`, `PUENTE_DISPOSITIVO=esp32-1-ts`. Con `esp32-sim-ts` el puente ya no arranca.
+- La migración 006 borra todo lo que no sea `esp32-1` (`esp32-sim`, `esp-32-sim`, `prueba-terminal`, …), pasa a `esp32-1` lo que el puente había copiado como `esp32-1-ts` y quita la columna `distancia`. Desde ahí la API rechaza cualquier otro dispositivo. Si tu `.env` todavía tiene `PUENTE_DISPOSITIVO`, bórralo: ya no se usa.
 - Si el simulador publicó en tu canal de ThingSpeak, esas lecturas siguen ahí y GitHub Pages las muestra como reales. Bórralas en ThingSpeak: **Channel Settings → Clear Channel** (borra todo el canal, no se puede deshacer).
 - Si en algún navegador marcaste "Usar esta simulación en toda la página", la página vuelve sola a ThingSpeak.
 
@@ -245,10 +241,12 @@ Hay dos formas de que las lecturas lleguen a tu MariaDB:
 
 | Forma | Cómo | Cuándo conviene |
 |---|---|---|
-| **A. El ESP32 manda a los dos** | `enviarThingSpeak()` + `enviarAPI()` en el firmware | El ESP32 y la laptop están en la misma red y se ven |
+| **A. El ESP32 manda a los dos** | `calidad_agua.ino` publica en ThingSpeak y luego manda a la API con el `entry_id` que le dio ThingSpeak | El ESP32 y la laptop están en la misma red y se ven |
 | **B. Puente ThingSpeak → MariaDB** | El ESP32 solo manda a ThingSpeak; un servicio en tu laptop copia las lecturas nuevas a MariaDB cada minuto | La red del Tec no deja que el ESP32 vea tu laptop, o quieres que el ESP32 funcione desde cualquier WiFi |
 
-El puente no duplica (usa el `entry_id` de ThingSpeak), conserva la hora original de cada lectura y, si tu laptop estuvo apagada, al prender trae lo que faltó (hasta las últimas 8000 entradas que guarda el canal). Las lecturas quedan con `origen = 'thingspeak'` y `dispositivo = 'esp32-1-ts'`.
+El puente no duplica (usa el `entry_id` de ThingSpeak), conserva la hora original de cada lectura y, si tu laptop estuvo apagada, al prender trae lo que faltó (hasta las últimas 8000 entradas que guarda el canal). Las lecturas quedan con `origen = 'thingspeak'` y `dispositivo = 'esp32-1'`, el mismo que las directas.
+
+**Puedes usar A y B a la vez sin duplicar nada:** la API guarda el `entry_id` de ThingSpeak que manda el ESP32, y el puente salta las entradas que ya están. Si una lectura no llegó a la API (laptop apagada, red caída), el puente la copia después.
 
 ### 11.1 · Crear el canal en ThingSpeak
 
@@ -271,13 +269,12 @@ El puente no duplica (usa el `entry_id` de ThingSpeak), conserva la hora origina
 THINGSPEAK_CHANNEL_ID=2741234
 THINGSPEAK_READ_KEY=
 THINGSPEAK_WRITE_KEY=XXXXXXXXXXXXXXXX
-PUENTE_DISPOSITIVO=esp32-1-ts
 PUENTE_INTERVALO=60
 ```
 
 - `THINGSPEAK_READ_KEY` vacía si el canal es público.
 - `THINGSPEAK_WRITE_KEY`: solo la usa la prueba de escritura. La del ESP32 va en `secretos.h`.
-- `PUENTE_DISPOSITIVO=esp32-1-ts`: así se distinguen las lecturas copiadas por el puente de las que el ESP32 manda directo (`esp32-1`).
+- `THINGSPEAK_CHANNEL_ID` también lo usa la API: con él enlaza cada lectura directa con su entrada de ThingSpeak. Después de cambiarlo, `docker compose -f docker-compose.fedora.yml up -d --force-recreate api`.
 
 ### 11.3 · Probar el canal desde la terminal
 
@@ -309,7 +306,7 @@ SELECT fecha, ph, turbidez, conductividad, ts_entry_id
 FROM lecturas WHERE origen = 'thingspeak' ORDER BY fecha DESC LIMIT 20;
 ```
 
-En la página: **Ajustes → MariaDB → Dispositivo `esp32-1-ts`**.
+En la página: **Ajustes → MariaDB**. Muestra todo `esp32-1`, llegue por la API o por el puente.
 
 ### 11.5 · La página de GitHub con tu canal
 
@@ -321,10 +318,6 @@ git push
 ```
 
 En 1 o 2 minutos https://marcoflesh.github.io/IoT-interface-design-/ arranca leyendo tu canal. Si ya habías guardado otra fuente en **Ajustes** de ese navegador, esa tiene prioridad: elige **ThingSpeak** en Ajustes y **Guardar**. Para volver al demo: `bash scripts/configurar-pagina.sh --demo`.
-
-### 11.6 · Los dos caminos a la vez
-
-> Si usas la forma A y el puente a la vez, cada lectura queda dos veces: una como `esp32-1` (directa) y otra como `esp32-1-ts` (copiada). No se mezclan, pero normalmente basta con una de las dos.
 
 ## Respaldos
 

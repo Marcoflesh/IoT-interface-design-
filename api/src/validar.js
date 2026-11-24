@@ -6,9 +6,12 @@ const LIMITES_FISICOS = {
   ph: [0, 14],
   turbidez: [0, 4000],
   conductividad: [0, 20000],
-  temperatura: [-10, 100],
-  distancia: [0, 600]       // cm, HC-SR04T (sin eco = null, nunca -1)
+  temperatura: [-10, 100]
 };
+
+// Un solo dispositivo: el ESP32 del equipo. Lo que llega directo y lo que copia el puente
+// desde ThingSpeak se guarda con este mismo nombre.
+const DISPOSITIVO = "esp32-1";
 
 // Datos de diagnóstico opcionales (no cuentan como lectura de calidad).
 const LIMITES_DIAGNOSTICO = {
@@ -43,7 +46,7 @@ function validarLectura(cuerpo) {
     lectura[campo] = r.valor;
     if (r.valor !== null) alguna = true;
   }
-  if (!alguna) return { error: "Manda al menos una variable (ph, turbidez, conductividad, temperatura o distancia)." };
+  if (!alguna) return { error: "Manda al menos una variable (ph, turbidez, conductividad o temperatura)." };
 
   for (const [campo, rango] of Object.entries(LIMITES_DIAGNOSTICO)) {
     const r = revisarNumero(cuerpo, campo, rango, "posible");
@@ -52,11 +55,17 @@ function validarLectura(cuerpo) {
   }
   if (lectura.rssi !== null) lectura.rssi = Math.round(lectura.rssi);
 
-  const dispositivo = cuerpo.dispositivo === undefined ? "esp32-1" : cuerpo.dispositivo;
-  if (typeof dispositivo !== "string" || !RE_ID.test(dispositivo)) {
-    return { error: "dispositivo debe tener de 1 a 32 letras, números, - o _." };
+  if (cuerpo.dispositivo !== undefined && cuerpo.dispositivo !== DISPOSITIVO) {
+    return { error: `Solo se acepta el dispositivo ${DISPOSITIVO} (el ESP32 del equipo).` };
   }
-  lectura.dispositivo = dispositivo;
+  lectura.dispositivo = DISPOSITIVO;
+
+  // entry_id que ThingSpeak le dio a esta misma lectura: así el puente no la copia otra vez.
+  const ts = cuerpo.ts_entry_id;
+  if (ts !== undefined && ts !== null && (!Number.isInteger(ts) || ts < 1)) {
+    return { error: "ts_entry_id debe ser un entero mayor que 0 o null." };
+  }
+  lectura.ts_entry_id = ts || null;
 
   if (cuerpo.firmware !== undefined && cuerpo.firmware !== null) {
     if (typeof cuerpo.firmware !== "string" || !RE_FIRMWARE.test(cuerpo.firmware)) {
@@ -65,14 +74,9 @@ function validarLectura(cuerpo) {
   }
   lectura.firmware = cuerpo.firmware || null;
 
-  // El ESP32 virtual se retiró (migración 004): solo se aceptan lecturas del ESP32 real.
   if (cuerpo.simulado !== undefined && cuerpo.simulado !== false) {
     return { error: "Solo se aceptan lecturas del ESP32 real: el simulador se retiró." };
   }
-  if (/^esp32-sim/.test(dispositivo)) {
-    return { error: "Solo se aceptan lecturas del ESP32 real: el simulador se retiró." };
-  }
-  lectura.simulado = false;
 
   return { lectura };
 }
@@ -88,4 +92,4 @@ function leerDispositivo(valor) {
   return typeof valor === "string" && RE_ID.test(valor) ? valor : undefined;
 }
 
-module.exports = { validarLectura, leerLimite, leerDispositivo, LIMITES_FISICOS, LIMITES_DIAGNOSTICO };
+module.exports = { validarLectura, leerLimite, leerDispositivo, LIMITES_FISICOS, LIMITES_DIAGNOSTICO, DISPOSITIVO };

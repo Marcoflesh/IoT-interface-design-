@@ -42,7 +42,7 @@ async function iniciar() {
       await esperar(2000);
     }
   }
-  const servidor = crearApp(pool, API_KEY).listen(PUERTO, HOST, () => {
+  const servidor = crearApp(pool, API_KEY, process.env.THINGSPEAK_CHANNEL_ID).listen(PUERTO, HOST, () => {
     console.log(`API lista en ${HOST}:${PUERTO}`);
   });
   const cerrar = () => servidor.close(() => pool.end().then(() => process.exit(0)));

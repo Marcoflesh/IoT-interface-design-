@@ -167,7 +167,7 @@ const char* API_KEY       = "LA_MISMA_ESP32_API_KEY_DEL_.env";
 4. Abre `esp32\calidad_agua\calidad_agua.ino` (librerías **OneWire** y **DallasTemperature**) con ese `secretos.h` en la misma carpeta.
 5. **Subir** y abre el **Monitor Serie** (115200). Cada 20 s debe salir `API -> 201 guardado en MariaDB`.
 
-## Paso 9 · Quitar el ESP32 virtual (una sola vez)
+## Paso 9 · Dejar solo el ESP32 real, `esp32-1` (una sola vez)
 
 El simulador se retiró: la página, la API y la base solo trabajan con el ESP32 real. Si alguna vez lo usaste:
 
@@ -179,7 +179,7 @@ docker compose up -d --build
 docker logs calidad-agua-api
 ```
 
-Al arrancar, la API aplica la migración 004 (en el log sale `Migración aplicada: 004_retirar_simulador.sql`) y borra todo lo de `esp32-sim` y `esp32-sim-ts`. El `docker rm` puede decir que el contenedor no existe; no pasa nada.
+Al arrancar, la API aplica las migraciones 004 y 006 (en el log sale `Migración aplicada: 006_solo_esp32_1.sql`): borra todo lo que no sea `esp32-1` (simulador, `prueba-terminal`, etc.), pasa a `esp32-1` lo copiado de ThingSpeak y quita la columna `distancia`. El `docker rm` puede decir que el contenedor no existe; no pasa nada.
 
 Si el simulador publicó en tu canal de ThingSpeak, esas lecturas siguen ahí: bórralas en **Channel Settings → Clear Channel** (borra todo el canal, no se puede deshacer).
 
@@ -193,7 +193,6 @@ Si el simulador publicó en tu canal de ThingSpeak, esas lecturas siguen ahí: b
 THINGSPEAK_CHANNEL_ID=2741234
 THINGSPEAK_READ_KEY=
 THINGSPEAK_WRITE_KEY=XXXXXXXXXXXXXXXX
-PUENTE_DISPOSITIVO=esp32-1-ts
 PUENTE_INTERVALO=60
 ```
 

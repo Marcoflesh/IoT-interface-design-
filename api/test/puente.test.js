@@ -34,20 +34,20 @@ function servidorFalso(estado) {
 }
 
 test("una entrada de ThingSpeak se convierte en fila", () => {
-  const f = feedALectura(feed(7, 5), CAMPOS, "esp32-1-ts");
+  const f = feedALectura(feed(7, 5), CAMPOS);
   assert.ifError(f.error);
   assert.strictEqual(f.entryId, 7);
   assert.strictEqual(f.fecha, "2026-11-21 18:05:00.000");
   assert.deepStrictEqual([f.lectura.ph, f.lectura.turbidez, f.lectura.conductividad, f.lectura.temperatura], [7.21, 1.4, 655, 22.4]);
-  assert.strictEqual(f.lectura.distancia, null, "sin field5 la distancia queda null");
-  assert.strictEqual(feedALectura(feed(8, 6, { field5: "41.2" }), CAMPOS, "x").lectura.distancia, 41.2);
+  assert.strictEqual(f.lectura.dispositivo, "esp32-1", "lo de ThingSpeak va al mismo esp32-1");
+  assert.strictEqual(f.lectura.distancia, undefined, "field5 ya no se usa");
 });
 
 test("campos vacíos quedan como null y lo imposible se descarta", () => {
-  assert.strictEqual(feedALectura(feed(1, 0, { field2: null }), CAMPOS, "x").lectura.turbidez, null);
-  assert.ok(feedALectura(feed(1, 0, { field1: "18" }), CAMPOS, "x").error);
-  assert.ok(feedALectura({ entry_id: 1, created_at: "nada", field1: "7" }, CAMPOS, "x").error);
-  assert.ok(feedALectura(feed(1, 0, { field1: null, field2: null, field3: null, field4: null }), CAMPOS, "x").error);
+  assert.strictEqual(feedALectura(feed(1, 0, { field2: null }), CAMPOS).lectura.turbidez, null);
+  assert.ok(feedALectura(feed(1, 0, { field1: "18" }), CAMPOS).error);
+  assert.ok(feedALectura({ entry_id: 1, created_at: "nada", field1: "7" }, CAMPOS).error);
+  assert.ok(feedALectura(feed(1, 0, { field1: null, field2: null, field3: null, field4: null }), CAMPOS).error);
 });
 
 test("canal privado sin llave da un error claro", async () => {
@@ -82,7 +82,7 @@ conDB("puente con MariaDB: historial, sin duplicados, nuevas y huecos", async ()
   for (let i = 1; i <= 150; i++) estado.feeds.push(feed(i, i % 60));
   estado.feeds[9].field1 = "25";                       // entrada 10 imposible: se descarta
   const s = await servidorFalso(estado);
-  const cfg = { ...configDesdeEntorno({}), base: `http://127.0.0.1:${s.address().port}`, canal: "123", dispositivo: "esp32-1-ts" };
+  const cfg = { ...configDesdeEntorno({}), base: `http://127.0.0.1:${s.address().port}`, canal: "123" };
 
   try {
     // 1) Primera vez: 150 en el canal → pide 100, ve hueco y pide 8000
@@ -111,8 +111,9 @@ conDB("puente con MariaDB: historial, sin duplicados, nuevas y huecos", async ()
     assert.deepStrictEqual([filas[0].n, filas[0].u, filas[0].origen], [452, 452, "thingspeak"]);
     const f = await admin.query("SELECT fecha FROM lecturas WHERE ts_canal = 123 AND ts_entry_id = 5");
     assert.strictEqual(f[0].fecha, "2026-11-21 18:05:00.000", "conserva la hora de ThingSpeak");
-    const d = await admin.query("SELECT descripcion, ultima_conexion FROM dispositivos WHERE id = 'esp32-1-ts'");
-    assert.match(d[0].descripcion, /ThingSpeak canal 123/);
+    const disp = await admin.query("SELECT DISTINCT dispositivo FROM lecturas WHERE ts_canal = 123");
+    assert.deepStrictEqual(disp.map((x) => x.dispositivo), ["esp32-1"]);
+    const d = await admin.query("SELECT ultima_conexion FROM dispositivos WHERE id = 'esp32-1'");
     assert.ok(d[0].ultima_conexion);
   } finally {
     s.close();

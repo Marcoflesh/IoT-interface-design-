@@ -36,6 +36,7 @@ services:
       DB_USER: ${DB_USER:-agua}
       DB_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD en .env}
       ESP32_API_KEY: ${ESP32_API_KEY:?Falta ESP32_API_KEY en .env}
+      THINGSPEAK_CHANNEL_ID: ${THINGSPEAK_CHANNEL_ID:-}   # enlaza cada lectura con su entrada de ThingSpeak (sin duplicados)
       PORT: 3000
     depends_on:
       db:
@@ -69,7 +70,6 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:?Falta DB_PASSWORD en .env}
       THINGSPEAK_CHANNEL_ID: ${THINGSPEAK_CHANNEL_ID:-}
       THINGSPEAK_READ_KEY: ${THINGSPEAK_READ_KEY:-}
-      PUENTE_DISPOSITIVO: ${PUENTE_DISPOSITIVO:-esp32-1-ts}
       PUENTE_INTERVALO: ${PUENTE_INTERVALO:-60}
     depends_on:
       db:

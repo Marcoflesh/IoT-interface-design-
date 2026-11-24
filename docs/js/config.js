@@ -18,8 +18,7 @@ window.APP_CONFIG = {
 
   // API propia (MariaDB). Vacío = el mismo servidor que sirve la página (Docker, localhost:8080).
   api: {
-    url: "",
-    dispositivo: ""   // vacío = todos · "esp32-1" = directo del ESP32 · "esp32-1-ts" = copiado por el puente
+    url: ""
   },
 
   // Qué field del canal de ThingSpeak corresponde a cada variable.

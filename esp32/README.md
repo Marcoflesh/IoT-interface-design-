@@ -13,10 +13,10 @@
 ## Qué manda a la API
 
 ```json
-{"dispositivo":"esp32-1","ph":null,"turbidez":null,"conductividad":412.3,"temperatura":22.40,"distancia":37.4,"rssi":-61,"firmware":"v1.1.0"}
+{"dispositivo":"esp32-1","ph":null,"turbidez":null,"conductividad":412.3,"temperatura":22.40,"ts_entry_id":57,"rssi":-61,"firmware":"v1.2.0"}
 ```
 
-Con el header `X-API-Key`. Respuestas: `201` guardado, `400` un dato no tiene sentido (la API dice cuál), `401` falta la llave o no coincide, número negativo = no llegó a la laptop.
+`dispositivo` solo puede ser `esp32-1`: la API rechaza cualquier otro. `ts_entry_id` es la entrada que ThingSpeak le dio a esa misma lectura; con él el puente no la copia otra vez. Va con el header `X-API-Key`. Respuestas: `201` guardado, `400` un dato no tiene sentido (la API dice cuál), `401` falta la llave o no coincide, número negativo = no llegó a la laptop.
 
 ## Hardware
 
@@ -26,7 +26,7 @@ Con el header `X-API-Key`. Respuestas: `201` guardado, `400` un dato no tiene se
 | pH | PH-4502C | pH | Analógica | Lo tienen |
 | Conductividad | Keyestudio TDS V1 | µS/cm | Analógica | Lo tienen |
 | Temperatura | DS18B20 | °C | Digital 1-Wire | Lo tienen |
-| Nivel | HC-SR04T | cm (distancia a la superficie) | Digital (trigger + echo) | Lo tienen; se guarda en MariaDB (`distancia`), aún no se muestra en la página |
+| Nivel | HC-SR04T | cm (distancia a la superficie) | Digital (trigger + echo) | Lo tienen; solo sale en el monitor serie, no se guarda |
 | Turbidez | TSW-10 | NTU | Analógica | Falta comprarlo |
 
 Para la PCB:
@@ -61,8 +61,8 @@ Para ThingSpeak basta con internet. Para la laptop, ESP32 y laptop deben estar e
    - Windows, PowerShell como administrador: `powershell -ExecutionPolicy Bypass -File scripts\windows\abrir-firewall.ps1`
 5. **Prueba con un celular** en la misma red: `http://IP-DE-LA-LAPTOP:8080/api/salud`. Si el celular la ve, el ESP32 también.
 6. **`secretos.h`**: `WIFI_SSID`, `WIFI_PASSWORD`, `API_URL = "http://IP-DE-LA-LAPTOP:8080/api/lecturas"` y `API_KEY` igual a `ESP32_API_KEY` del `.env`.
-7. **Suban `prueba_red/prueba_red.ino`** con una copia de `secretos.h` en `prueba_red/`. Monitor serie a 115200. Deben salir los cuatro pasos OK, el último con `201`. Se repite cada 30 s.
-8. **Suban `calidad_agua/calidad_agua.ino`** (con su propio `secretos.h`) y revisen las lecturas con `scripts/fedora/ver-mariadb.sh` o `scripts\windows\ver-mariadb.ps1`. La lectura de prueba queda con el dispositivo `esp32-prueba-red`.
+7. **Suban `prueba_red/prueba_red.ino`** con una copia de `secretos.h` en `prueba_red/`. Monitor serie a 115200. Deben salir los cuatro pasos OK; el [4] revisa la llave sin guardar ninguna lectura. Se repite cada 30 s.
+8. **Suban `calidad_agua/calidad_agua.ino`** (con su propio `secretos.h`) y revisen las lecturas con `scripts/fedora/ver-mariadb.sh` o `scripts\windows\ver-mariadb.ps1`.
 
 ## Red del Tec
 
@@ -89,6 +89,6 @@ El firmware usa PEAP + MSCHAPv2 sin certificado, lo más común en universidades
 | `[1] WiFi: FALLA` con la red visible | Contraseña, o la red pide usuario | Revisen la clave; si pide usuario, `WIFI_EMPRESARIAL = true` |
 | `[2] Internet: FALLA` | Red con página de inicio de sesión, o sin internet | Usen otra red |
 | `[3] Laptop: NO RESPONDE` | IP, Docker apagado, firewall o red aislada | Pasos 3 a 5; si el celular tampoco la ve, cambien de red |
-| `[4] API: 401` | Llave distinta | `API_KEY` = `ESP32_API_KEY` del `.env`, sin espacios |
+| `[4] Llave: MAL` | Llave distinta | `API_KEY` = `ESP32_API_KEY` del `.env`, sin espacios |
 
 La IP de la laptop cambia con cada red. Revísenla antes de cada demo.

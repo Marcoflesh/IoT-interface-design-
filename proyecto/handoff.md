@@ -1,6 +1,6 @@
 # Handoff · Web IoT · Monitoreo de calidad del agua (TC1004B)
 
-**Fecha:** 2026-11-24 · **Último prompt:** revisar el firmware real del ESP32 (no aparecía en MariaDB)
+**Fecha:** 2026-11-24 · **Último prompt:** un solo dispositivo (esp32-1), ThingSpeak al mismo, sin distancia
 
 ## Repositorio
 - https://github.com/Marcoflesh/IoT-interface-design- · rama `main`.
@@ -136,6 +136,17 @@ Ninguna se manda por chat ni se sube a GitHub (`.env` y `secretos.h` están en `
 - El ESP32 está conectado por USB a la laptop de otro compañero (solo para subir código y ver el monitor serie). `API_URL` debe llevar la IP de la laptop que corre Docker (la de Marco), no la de la laptop del USB; la `ESP32_API_KEY` se le pasa al compañero en privado.
 - Marco tenía un `secretos.h` suelto en la raíz del repo, fuera de `.gitignore` → ahora se ignora `secretos.h` en cualquier carpeta. Su clon está en `~/IoT-interface-design-/IoT-interface-design-` (carpeta anidada).
 - Consecuencia: sin pH ni turbidez el semáforo queda gris. Pendiente decidir si evalúa solo lo disponible.
+
+## Un solo dispositivo: esp32-1 (2026-11-24)
+- Pedido de Marco: borrar `esp32-sim`, `prueba-terminal`, `esp-32-sim`; dejar solo `esp32-1`; que lo de ThingSpeak llegue al mismo `esp32-1`; quitar `distancia` y tener `temperatura`.
+- Migración `006_solo_esp32_1.sql`: `esp32-1-ts` → `esp32-1`, borra todo lo demás (lecturas, calibraciones, dispositivos) y `DROP COLUMN IF EXISTS distancia`. La 005 (distancia) se borró del repo; si alguien ya la aplicó, la 006 quita la columna. Se usó 006 y no 005 para no chocar con quien ya tenía registrada la 005.
+- `temperatura` ya existía desde la 001 (`DECIMAL(5,2)`); se dejó, y la prueba de la 006 verifica que siga.
+- API: `validar.js` solo acepta `dispositivo` ausente o `esp32-1`; acepta `ts_entry_id`. `app.js` recibe el Channel ID (`THINGSPEAK_CHANNEL_ID`, ahora también en el servicio `api` de los dos compose) y guarda `(ts_canal, ts_entry_id)`; si el puente ya copió esa entrada, `ON DUPLICATE KEY UPDATE` completa la misma fila.
+- Puente: siempre `esp32-1` (se quitó `PUENTE_DISPOSITIVO`); `ultimo` cuenta solo filas con origen `thingspeak` y salta las que ya existen por entry_id → si una lectura no llegó a la API, el puente la copia; si sí llegó, no la duplica.
+- Firmware `calidad_agua.ino` v1.2.0: ThingSpeak primero, luego API con `ts_entry_id`; sin distancia (el HC-SR04T solo se imprime). `prueba_red.ino` ya no guarda lecturas: POST `{}` → 400 = llave OK.
+- `probar-conexion.sh`/`.ps1` eran los que creaban `prueba-terminal`: ahora prueban la llave con POST `{}` y no guardan nada.
+- Página: sin campo "Dispositivo en MariaDB"; ignora filtros guardados (`esp32-1-ts`); la fuente dice "MariaDB (API local) · esp32-1". El laboratorio ya no existía desde el commit anterior.
+- Verificado: API 19/19 con MariaDB real (incluye API + puente sin duplicados en ambos órdenes y migración 006 dos veces), migraciones 003→004→006 con el cliente `mariadb` sobre una base con `prueba-terminal`, `probar-conexion.sh` contra la API real (no escribe), página en Chrome headless, compose válidos.
 
 ## Pendiente del equipo
 - Responder el banco de preguntas (divisores, fórmulas, pines) para el firmware real.

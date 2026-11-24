@@ -11,7 +11,6 @@ test("acepta una lectura completa y pone dispositivo por defecto", () => {
   const r = validarLectura({ ph: 7.1, turbidez: 1.2, conductividad: 640, temperatura: 22.5 });
   assert.ifError(r.error);
   assert.strictEqual(r.lectura.dispositivo, "esp32-1");
-  assert.strictEqual(r.lectura.simulado, false);
   assert.strictEqual(r.lectura.rssi, null);
 });
 
@@ -27,23 +26,32 @@ test("acepta diagnóstico: rssi, voltajes crudos y firmware", () => {
   assert.ifError(r.error);
   assert.strictEqual(r.lectura.rssi, -61);
   assert.strictEqual(r.lectura.firmware, "v1.2.0");
-  assert.strictEqual(r.lectura.simulado, false);
 });
 
-test("acepta la distancia del HC-SR04T y rechaza -1", () => {
+test("solo acepta el dispositivo esp32-1", () => {
+  assert.strictEqual(validarLectura({ ph: 7, dispositivo: "esp32-1" }).lectura.dispositivo, "esp32-1");
+  for (const otro of ["esp32-sim", "esp32-sim-ts", "esp-32-sim", "prueba-terminal", "esp32-1-ts", "esp32-2"]) {
+    assert.ok(validarLectura({ ph: 7, dispositivo: otro }).error, otro);
+  }
+  assert.ok(validarLectura({ ph: 7, simulado: true }).error);
+  assert.ifError(validarLectura({ ph: 7, simulado: false }).error);
+});
+
+test("distancia ya no se guarda; temperatura sí", () => {
   const r = validarLectura({ temperatura: 22.5, conductividad: 410.2, distancia: 37.4, ph: null, turbidez: null });
   assert.ifError(r.error);
-  assert.strictEqual(r.lectura.distancia, 37.4);
-  assert.ifError(validarLectura({ distancia: 50 }).error, "solo distancia cuenta como lectura");
-  assert.ok(validarLectura({ temperatura: 22, distancia: -1 }).error, "sin eco se manda null, no -1");
-  assert.strictEqual(validarLectura({ ph: 7 }).lectura.distancia, null);
+  assert.strictEqual(r.lectura.temperatura, 22.5);
+  assert.strictEqual(r.lectura.distancia, undefined);
+  assert.ok(validarLectura({ distancia: 50 }).error, "solo distancia ya no cuenta como lectura");
+  assert.ifError(validarLectura({ temperatura: 21.8 }).error, "solo temperatura sí cuenta");
 });
 
-test("rechaza lecturas del simulador retirado", () => {
-  assert.ok(validarLectura({ ph: 7, simulado: true }).error);
-  assert.ok(validarLectura({ ph: 7, dispositivo: "esp32-sim" }).error);
-  assert.ok(validarLectura({ ph: 7, dispositivo: "esp32-sim-ts" }).error);
-  assert.ifError(validarLectura({ ph: 7, simulado: false }).error);
+test("ts_entry_id: entero positivo o null", () => {
+  assert.strictEqual(validarLectura({ ph: 7, ts_entry_id: 57 }).lectura.ts_entry_id, 57);
+  assert.strictEqual(validarLectura({ ph: 7 }).lectura.ts_entry_id, null);
+  assert.strictEqual(validarLectura({ ph: 7, ts_entry_id: null }).lectura.ts_entry_id, null);
+  assert.ok(validarLectura({ ph: 7, ts_entry_id: 0 }).error, "0 = ThingSpeak la rechazó: no se manda");
+  assert.ok(validarLectura({ ph: 7, ts_entry_id: "57" }).error);
 });
 
 test("rechaza texto, valores imposibles y cuerpos vacíos", () => {
@@ -98,7 +106,7 @@ conDB("integración con MariaDB: migraciones, POST, GET, dispositivos y salud", 
   await pool.query("DELETE FROM dispositivos WHERE id NOT IN ('esp32-1')");
 
   const KEY = "llave-de-prueba-1234567890";
-  const servidor = crearApp(pool, KEY).listen(0);
+  const servidor = crearApp(pool, KEY, "123").listen(0);
   const base = `http://127.0.0.1:${servidor.address().port}`;
   const post = (cuerpo, llave = KEY, crudo) => fetch(base + "/api/lecturas", {
     method: "POST",
@@ -110,47 +118,135 @@ conDB("integración con MariaDB: migraciones, POST, GET, dispositivos y salud", 
     assert.strictEqual((await post({ ph: 7 }, "otra-llave-incorrecta")).status, 401);
     assert.strictEqual((await post({ ph: 20 })).status, 400);
     assert.strictEqual((await post(null, KEY, '{"ph": nan}')).status, 400);
+    assert.strictEqual((await post({})).status, 400, "cuerpo vacío con llave buena = 400 (así prueba la llave prueba_red.ino)");
 
     const r1 = await post({ ph: 7.25, turbidez: 1.4, conductividad: 655.5, temperatura: 22.1, distancia: 37.4, rssi: -58, ph_v: 2.512, firmware: "v1.0.0" });
     assert.strictEqual(r1.status, 201);
     assert.ok((await r1.json()).id > 0);
-    assert.strictEqual((await post({ ph: 8.9, turbidez: null, conductividad: 700, dispositivo: "esp32-2" })).status, 201);
-    assert.strictEqual((await post({ ph: 7.0, dispositivo: "nuevo-01" })).status, 201, "dispositivo nuevo se registra solo");
+    assert.strictEqual((await post({ ph: 8.9, turbidez: null, conductividad: 700, temperatura: 21.4, dispositivo: "esp32-1" })).status, 201);
+    assert.strictEqual((await post({ ph: 7.0, dispositivo: "prueba-terminal" })).status, 400, "otro dispositivo no entra");
+    assert.strictEqual((await post({ ph: 7, dispositivo: "esp32-sim" })).status, 400, "el simulador no entra");
 
     const g = await (await fetch(base + "/api/lecturas?limit=10")).json();
-    assert.strictEqual(g.lecturas.length, 3);
+    assert.strictEqual(g.lecturas.length, 2);
     assert.strictEqual(g.lecturas[0].ph, 7.25);
     assert.strictEqual(g.lecturas[0].conductividad, 655.5);
+    assert.strictEqual(g.lecturas[0].temperatura, 22.1);
+    assert.strictEqual(g.lecturas[1].temperatura, 21.4);
     assert.strictEqual(g.lecturas[0].rssi, -58);
-    assert.strictEqual(g.lecturas[0].distancia, 37.4);
-    assert.strictEqual(g.lecturas[1].distancia, null);
+    assert.ok(!("distancia" in g.lecturas[0]), "la distancia ya no existe");
     assert.strictEqual(g.lecturas[1].turbidez, null);
     assert.match(g.lecturas[0].fecha, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     assert.ok(Math.abs(new Date(g.lecturas[1].fecha) - Date.now()) < 60000, "la fecha debe estar en UTC");
-
-    const solo2 = await (await fetch(base + "/api/lecturas?dispositivo=esp32-2")).json();
-    assert.strictEqual(solo2.lecturas.length, 1);
-    assert.strictEqual((await post({ ph: 7, dispositivo: "esp32-sim" })).status, 400, "el simulador ya no entra");
     assert.strictEqual((await fetch(base + "/api/lecturas?dispositivo=a%20b")).status, 400);
 
     const d = await (await fetch(base + "/api/dispositivos")).json();
-    const real = d.dispositivos.find((x) => x.id === "esp32-1");
-    const nuevo = d.dispositivos.find((x) => x.id === "nuevo-01");
-    assert.strictEqual(real.firmware, "v1.0.0");
-    assert.strictEqual(real.lecturas, 1);
-    assert.strictEqual(nuevo.simulado, false);
-    assert.ok(real.segundos_sin_datos < 60);
+    assert.deepStrictEqual(d.dispositivos.map((x) => x.id), ["esp32-1"]);
+    assert.strictEqual(d.dispositivos[0].firmware, "v1.0.0");
+    assert.strictEqual(d.dispositivos[0].lecturas, 2);
+    assert.ok(d.dispositivos[0].segundos_sin_datos < 60);
 
     const s = await (await fetch(base + "/api/salud")).json();
     assert.strictEqual(s.ok, true);
-    assert.strictEqual(s.lecturas, 3);
+    assert.strictEqual(s.lecturas, 2);
 
     const v = await pool.query("SELECT dispositivo, lecturas FROM resumen_diario ORDER BY dispositivo");
-    assert.strictEqual(v.length, 3);
+    assert.deepStrictEqual(v.map((f) => f.dispositivo), ["esp32-1"]);
   } finally {
     await pool.query("DELETE FROM lecturas");
     await pool.query("DELETE FROM dispositivos WHERE id NOT IN ('esp32-1')");
     servidor.close();
+    await pool.end();
+  }
+});
+
+conDB("ESP32 directo + puente de ThingSpeak: una sola fila por lectura en esp32-1", async () => {
+  const { crearApp } = require("../src/app");
+  const { migrar } = require("../src/migrar");
+  const { sincronizar, configDesdeEntorno } = require("../src/puente-thingspeak");
+  const http = require("node:http");
+  const pool = crearPool(process.env.TEST_DB_USER, process.env.TEST_DB_PASSWORD);
+  await migrar(pool, { log: () => {} });
+  await pool.query("DELETE FROM lecturas");
+
+  // ThingSpeak falso con 3 entradas: 10 y 11 también llegaron directo a la API; 12 solo a ThingSpeak.
+  const feeds = [10, 11, 12].map((id, i) => ({
+    entry_id: id, created_at: `2026-11-24T19:0${i}:00Z`, field1: null, field2: null, field3: "410", field4: "22.5"
+  }));
+  const ts = http.createServer((req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify({ channel: { id: 123 }, feeds }));
+  }).listen(0);
+  const KEY = "llave-de-prueba-1234567890";
+  const servidor = crearApp(pool, KEY, "123").listen(0);
+  const post = (cuerpo) => fetch(`http://127.0.0.1:${servidor.address().port}/api/lecturas`, {
+    method: "POST", headers: { "Content-Type": "application/json", "X-API-Key": KEY }, body: JSON.stringify(cuerpo)
+  });
+  const cfg = { ...configDesdeEntorno({ THINGSPEAK_CHANNEL_ID: "123" }), base: `http://127.0.0.1:${ts.address().port}` };
+
+  try {
+    // 10: primero la API y luego el puente. 11: el puente se adelantó y luego llega la API.
+    assert.strictEqual((await post({ conductividad: 410, temperatura: 22.5, rssi: -60, ts_entry_id: 10 })).status, 201);
+    await pool.query("INSERT INTO lecturas (fecha, dispositivo, origen, ts_canal, ts_entry_id, conductividad, temperatura) VALUES ('2026-11-24 19:01:00', 'esp32-1', 'thingspeak', 123, 11, 410, 22.5)");
+    assert.strictEqual((await post({ conductividad: 410, temperatura: 22.5, rssi: -61, ts_entry_id: 11 })).status, 201, "si ya estaba, la completa");
+
+    const r = await sincronizar(pool, cfg);
+    assert.strictEqual(r.copiadas, 1, "solo copia la 12");
+    assert.strictEqual((await sincronizar(pool, cfg)).copiadas, 0, "segunda pasada no copia nada");
+
+    const filas = await pool.query("SELECT dispositivo, origen, ts_entry_id, rssi FROM lecturas ORDER BY ts_entry_id");
+    assert.deepStrictEqual(filas.map((f) => [f.dispositivo, f.origen, f.ts_entry_id, f.rssi]), [
+      ["esp32-1", "api", 10, -60],
+      ["esp32-1", "thingspeak", 11, -61],
+      ["esp32-1", "thingspeak", 12, null]
+    ]);
+
+    // Sin Channel ID configurado en la API, el ts_entry_id se ignora (no hay con qué enlazarlo).
+    const sinCanal = crearApp(pool, KEY).listen(0);
+    await fetch(`http://127.0.0.1:${sinCanal.address().port}/api/lecturas`, {
+      method: "POST", headers: { "Content-Type": "application/json", "X-API-Key": KEY }, body: JSON.stringify({ ph: 7, ts_entry_id: 99 })
+    });
+    sinCanal.close();
+    const sueltas = await pool.query("SELECT ts_canal, ts_entry_id FROM lecturas WHERE ph = 7");
+    assert.deepStrictEqual([sueltas[0].ts_canal, sueltas[0].ts_entry_id], [null, null]);
+  } finally {
+    await pool.query("DELETE FROM lecturas");
+    servidor.close();
+    ts.close();
+    await pool.end();
+  }
+});
+
+conDB("migración 006: deja solo esp32-1, junta lo de ThingSpeak y quita distancia", async () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const { migrar } = require("../src/migrar");
+  const pool = crearPool(process.env.TEST_DB_USER, process.env.TEST_DB_PASSWORD);
+  try {
+    await migrar(pool, { log: () => {} });
+    await pool.query("DELETE FROM lecturas");
+    await pool.query("DELETE FROM calibraciones");
+    await pool.query("DELETE FROM dispositivos WHERE id <> 'esp32-1'");
+    await pool.query("ALTER TABLE lecturas ADD COLUMN IF NOT EXISTS distancia DECIMAL(6,1) NULL");
+    await pool.query("INSERT INTO dispositivos (id, descripcion, simulado) VALUES ('esp32-sim', 's', 1), ('esp-32-sim', 's', 0), ('prueba-terminal', 'p', 0), ('esp32-1-ts', 'ts', 0)");
+    await pool.query("INSERT INTO lecturas (fecha, dispositivo, ph) VALUES (NOW(3), 'esp32-1', 7.1), (NOW(3), 'esp32-1-ts', 7.2), (NOW(3), 'esp32-sim', 8.1), (NOW(3), 'esp-32-sim', 8.2), (NOW(3), 'prueba-terminal', 8.3)");
+    await pool.query("INSERT INTO calibraciones (dispositivo, sensor, fecha) VALUES ('prueba-terminal', 'ph', NOW()), ('esp32-1', 'ph', NOW())");
+
+    const sql = fs.readFileSync(path.join(__dirname, "..", "migraciones", "006_solo_esp32_1.sql"), "utf8");
+    for (const s of sentencias(sql)) await pool.query(s);
+    for (const s of sentencias(sql)) await pool.query(s);   // dos veces: no debe fallar
+
+    const lect = await pool.query("SELECT dispositivo, ph FROM lecturas ORDER BY ph");
+    assert.deepStrictEqual(lect.map((f) => [f.dispositivo, f.ph]), [["esp32-1", 7.1], ["esp32-1", 7.2]]);
+    assert.deepStrictEqual((await pool.query("SELECT id FROM dispositivos")).map((f) => f.id), ["esp32-1"]);
+    assert.deepStrictEqual((await pool.query("SELECT dispositivo FROM calibraciones")).map((f) => f.dispositivo), ["esp32-1"]);
+    const cols = (await pool.query("SHOW COLUMNS FROM lecturas")).map((f) => f.Field);
+    assert.ok(!cols.includes("distancia"));
+    assert.ok(cols.includes("temperatura"));
+  } finally {
+    await pool.query("DELETE FROM calibraciones");
+    await pool.query("DELETE FROM lecturas");
+    await pool.query("DELETE FROM dispositivos WHERE id <> 'esp32-1'");
     await pool.end();
   }
 });
@@ -202,7 +298,7 @@ conUsuarioApp("permisos mínimos: la API funciona sin poder crear tablas", async
     const r = await fetch(base + "/api/lecturas", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-API-Key": "llave-de-prueba-1234567890" },
-      body: JSON.stringify({ ph: 7.1, dispositivo: "esp32-2" })
+      body: JSON.stringify({ ph: 7.1, ts_entry_id: 5 })
     });
     assert.strictEqual(r.status, 201);
     servidor.close();
