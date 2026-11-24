@@ -1,6 +1,6 @@
 # Handoff · Web IoT · Monitoreo de calidad del agua (TC1004B)
 
-**Fecha:** 2026-11-24 · **Último prompt:** un solo dispositivo (esp32-1), ThingSpeak al mismo, sin distancia
+**Fecha:** 2026-11-24 · **Último prompt:** semáforo de 4 parámetros con temperatura, sin demo, canal privado nuevo y base limpia
 
 ## Repositorio
 - https://github.com/Marcoflesh/IoT-interface-design- · rama `main`.
@@ -147,6 +147,17 @@ Ninguna se manda por chat ni se sube a GitHub (`.env` y `secretos.h` están en `
 - `probar-conexion.sh`/`.ps1` eran los que creaban `prueba-terminal`: ahora prueban la llave con POST `{}` y no guardan nada.
 - Página: sin campo "Dispositivo en MariaDB"; ignora filtros guardados (`esp32-1-ts`); la fuente dice "MariaDB (API local) · esp32-1". El laboratorio ya no existía desde el commit anterior.
 - Verificado: API 19/19 con MariaDB real (incluye API + puente sin duplicados en ambos órdenes y migración 006 dos veces), migraciones 003→004→006 con el cliente `mariadb` sobre una base con `prueba-terminal`, `probar-conexion.sh` contra la API real (no escribe), página en Chrome headless, compose válidos.
+
+## Semáforo de 4 parámetros, sin demo, canal nuevo y base limpia (2026-11-24)
+- Regla nueva (Marco): verde 4/4 en rango, amarillo 3 o 2/4, rojo 1 o 0/4, gris si falta alguna. `semaforo.js` cuenta `enRango`; `criticoRojo` sigue opcional.
+- Temperatura entra al semáforo, tarjetas, Historial (botón y columna) y Ajustes. Rango por defecto **10 a 30 °C** (crítico < 5 o > 35): propuesta del equipo, la NOM-127 no fija temperatura; se cambia en Ajustes.
+- Se quitó el **modo demo** ("Modo demo · simular muestra", fuente demo, `crearDemo`, `--demo`/`-Demo` de configurar-pagina): era la "simulación" que Marco seguía viendo. Un navegador con `fuente: demo` guardada vuelve a ThingSpeak. El laboratorio ya no existía.
+- Tarjetas: 4 por fila (2 por debajo de 1180 px), insignia bajo el nombre y el rango en su propia línea (se encimaban). Revisado con capturas.
+- Canal nuevo **privado**: `configurar-pagina.sh/.ps1` exigen `THINGSPEAK_READ_KEY`; guías y `.env.example` dicen que es obligatoria; `probar-thingspeak` sin `--escribir` para no ensuciar el canal. La Read Key queda pública en `docs/js/config.js` (solo lectura; no hay otra forma en una página estática).
+- `scripts/fedora/base-nueva.sh`: muestra lo que hay, pide escribir el nombre de la base, detiene api y puente, respalda, `DROP DATABASE` y llama a `preparar-mariadb.sh`. `lib-mariadb.sh` comparte la contraseña de root con los scripts hijos (`MARIADB_ROOT_CLAVE`) para no pedirla tres veces. Probado con MariaDB real: crear, cancelar (no borra), confirmar (respaldo + base vacía con esp32-1).
+- `ver-mariadb.sh/.ps1`: semáforo de 4 parámetros en SQL con columna `en_rango`, `ts_entrada`, temperatura promedio y sección "¿Alguna lectura repetida?". Antes fallaba porque pedía `distancia`.
+- "Sin interpolar": cada lectura queda una vez (índice único canal + entry_id), `origen` dice si llegó directo o por el puente y nada rellena huecos. Prueba completa sobre la base nueva: 5 entradas → 5 filas (3 api, 2 thingspeak), 0 repetidas, colores correctos.
+- Nuevo `PUESTA_EN_MARCHA.md` (qué va en `.env`, `secretos.h`, `config.js`; pasos 0 a 9; DBeaver; checklist; problemas) y FEDORA.md Paso 12 con los mismos comandos.
 
 ## Pendiente del equipo
 - Responder el banco de preguntas (divisores, fórmulas, pines) para el firmware real.

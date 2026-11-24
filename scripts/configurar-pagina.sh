@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # Pone tu canal de ThingSpeak en la página publicada (docs/js/config.js) usando los datos del .env,
-# para que GitHub Pages arranque leyendo ThingSpeak en vez del modo demo.
+# para que GitHub Pages lea las lecturas del ESP32.
 #
-#   bash scripts/configurar-pagina.sh            → escribe Channel ID (y Read Key si el canal es privado)
-#   bash scripts/configurar-pagina.sh --demo     → regresa la página al modo demo
+#   bash scripts/configurar-pagina.sh     → escribe Channel ID y Read API Key (el canal es privado)
 #
 # Solo pone datos de LECTURA. La Write API Key nunca va en docs/ (es público).
 set -euo pipefail
@@ -12,16 +11,13 @@ cd "$(dirname "$0")/.." || exit 1
 source scripts/fedora/lib-mariadb.sh
 
 ARCHIVO=docs/js/config.js
-if [ "${1:-}" = "--demo" ]; then
-  CANAL=""; LEER=""; FUENTE="demo"
-else
-  [ -f .env ] || { echo "Falta .env"; exit 1; }
-  CANAL=$(leer_env THINGSPEAK_CHANNEL_ID)
-  LEER=$(leer_env THINGSPEAK_READ_KEY)
-  FUENTE="thingspeak"
-  [[ "$CANAL" =~ ^[0-9]+$ ]] || { echo "THINGSPEAK_CHANNEL_ID en .env debe ser un número."; exit 1; }
-  [[ -z "$LEER" || "$LEER" =~ ^[A-Za-z0-9]{16}$ ]] || { echo "THINGSPEAK_READ_KEY debe tener 16 letras/números (o estar vacía)."; exit 1; }
-fi
+[ -f .env ] || { echo "Falta .env"; exit 1; }
+CANAL=$(leer_env THINGSPEAK_CHANNEL_ID)
+LEER=$(leer_env THINGSPEAK_READ_KEY)
+FUENTE="thingspeak"
+[[ "$CANAL" =~ ^[0-9]+$ ]] || { echo "THINGSPEAK_CHANNEL_ID en .env debe ser un número."; exit 1; }
+[ -n "$LEER" ] || { echo "Falta THINGSPEAK_READ_KEY en .env: el canal es privado y la página no podría leerlo."; exit 1; }
+[[ "$LEER" =~ ^[A-Za-z0-9]{16}$ ]] || { echo "THINGSPEAK_READ_KEY debe tener 16 letras/números (pestaña API Keys → Read API Keys)."; exit 1; }
 
 python3 - "$ARCHIVO" "$FUENTE" "$CANAL" "$LEER" <<'PY'
 import re, sys

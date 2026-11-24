@@ -1,19 +1,15 @@
 ﻿# Pone tu canal de ThingSpeak en la página publicada (docs\js\config.js) con los datos del .env.
-#   powershell -ExecutionPolicy Bypass -File scripts\windows\configurar-pagina.ps1         → modo ThingSpeak
-#   powershell -ExecutionPolicy Bypass -File scripts\windows\configurar-pagina.ps1 -Demo   → regresa al demo
+#   powershell -ExecutionPolicy Bypass -File scripts\windows\configurar-pagina.ps1   → Channel ID + Read API Key
 # Solo datos de LECTURA: la Write API Key nunca va en docs\ (es público).
-param([switch]$Demo)
 . "$PSScriptRoot\lib.ps1"
 
 $archivo = Join-Path $Raiz 'docs\js\config.js'
-if ($Demo) { $canal = ''; $leer = ''; $fuente = 'demo' }
-else {
-  $canal = Get-EnvValor 'THINGSPEAK_CHANNEL_ID'
-  $leer = Get-EnvValor 'THINGSPEAK_READ_KEY'
-  $fuente = 'thingspeak'
-  if ($canal -notmatch '^\d+$') { Write-Mal 'THINGSPEAK_CHANNEL_ID en .env debe ser un número.'; exit 1 }
-  if ($leer -and $leer -notmatch '^[A-Za-z0-9]{16}$') { Write-Mal 'THINGSPEAK_READ_KEY debe tener 16 letras/números (o estar vacía).'; exit 1 }
-}
+$canal = Get-EnvValor 'THINGSPEAK_CHANNEL_ID'
+$leer = Get-EnvValor 'THINGSPEAK_READ_KEY'
+$fuente = 'thingspeak'
+if ($canal -notmatch '^\d+$') { Write-Mal 'THINGSPEAK_CHANNEL_ID en .env debe ser un número.'; exit 1 }
+if (-not $leer) { Write-Mal 'Falta THINGSPEAK_READ_KEY en .env: el canal es privado y la página no podría leerlo.'; exit 1 }
+if ($leer -notmatch '^[A-Za-z0-9]{16}$') { Write-Mal 'THINGSPEAK_READ_KEY debe tener 16 letras/números.'; exit 1 }
 
 $texto = [System.IO.File]::ReadAllText($archivo)
 $nuevo = [regex]::new('(\n  fuente: )"[a-z]+"').Replace($texto, "`${1}`"$fuente`"", 1)

@@ -19,9 +19,9 @@
   };
 
   var TEXTOS = {
-    verde:    { etq: "Agua en buen estado", desc: "Las 3 variables están dentro de rango." },
-    amarillo: { etq: "Precaución", desc: "Una variable está fuera de rango. Revísala antes de reutilizar el agua." },
-    rojo:     { etq: "No apta", desc: "Dos o más variables están fuera de rango. No reutilices esta agua." },
+    verde:    { etq: "Agua en buen estado", desc: "Los 4 parámetros están dentro de rango." },
+    amarillo: { etq: "Precaución", desc: "Solo 3 o 2 de los 4 parámetros están en rango. Revisa los marcados antes de reutilizar el agua." },
+    rojo:     { etq: "No apta", desc: "Solo 1 o ninguno de los 4 parámetros está en rango. No reutilices esta agua." },
     gris:     { etq: "Sin datos", desc: "Esperando lecturas del ESP32." }
   };
   var ICONOS = { verde: "✓", amarillo: "!", rojo: "✕", gris: "?" };
@@ -57,7 +57,8 @@
 
   // ---------- Configuración (defecto + localStorage) ----------
 
-  var FUENTES = ["thingspeak", "api", "demo"];
+  // Sin modo demo: quien lo tenía guardado vuelve a ThingSpeak.
+  var FUENTES = ["thingspeak", "api"];
 
   function configDefecto() {
     var c = copiar(window.APP_CONFIG);
@@ -110,7 +111,6 @@
     grafica: null,
     temporizador: null
   };
-  var demo = Datos.crearDemo(estado.config.intervaloSeg);
 
   function clasificar(l) {
     return S.clasificar(l, estado.config.umbrales, { criticoRojo: estado.config.criticoRojo });
@@ -135,9 +135,7 @@
     btn.disabled = true;
 
     var c = estado.config;
-    var promesa = c.fuente === "thingspeak" ? Datos.leerThingSpeak(c)
-      : c.fuente === "api" ? Datos.leerAPI(c)
-      : demo.leer(c.resultados);
+    var promesa = c.fuente === "api" ? Datos.leerAPI(c) : Datos.leerThingSpeak(c);
 
     promesa
       .then(function (r) {
@@ -197,10 +195,9 @@
 
   function renderNav() {
     var c = estado.config;
-    $("#nav-fuente").textContent = c.fuente === "thingspeak"
-      ? "Fuente: ThingSpeak · canal " + (c.thingspeak.channelId || "sin configurar")
-      : c.fuente === "api" ? "Fuente: MariaDB (API local) · esp32-1"
-      : "Fuente: demo (datos simulados)";
+    $("#nav-fuente").textContent = c.fuente === "api"
+      ? "Fuente: MariaDB (API local) · esp32-1"
+      : "Fuente: ThingSpeak · canal " + (c.thingspeak.channelId || "sin configurar");
   }
 
   // ---------- 1. Inicio ----------
@@ -217,7 +214,8 @@
         '<span class="variable__cab"><span class="variable__nombre">' + v.nombre + '</span><span class="chip" data-chip></span></span>' +
         '<span class="variable__valor"><span data-valor>–</span>' + (v.unidad ? '<span class="variable__unidad">' + v.unidad + "</span>" : "") + "</span>" +
         '<span><span class="medidor" aria-hidden="true"><span class="medidor__banda" data-banda></span><span class="medidor__marca" data-marca></span></span>' +
-        '<span class="medidor__escala"><span>' + v.escalaMin + '</span><span data-rango-txt></span><span>' + fmt(v.escalaMax, 0) + "</span></span></span>" +
+        '<span class="medidor__escala"><span>' + v.escalaMin + '</span><span>' + fmt(v.escalaMax, 0) + "</span></span>" +
+        '<span class="medidor__rango" data-rango-txt></span></span>' +
         '<span class="variable__pie">Ver historial →</span>';
       cont.appendChild(b);
     });
@@ -247,7 +245,7 @@
     var c = estado.config;
     var l = ultima();
     var res = clasificar(l);
-    var vencida = l ? S.estaVencida(l.fecha, new Date(), c.minutosSinDatos) && c.fuente !== "demo" : true;
+    var vencida = l ? S.estaVencida(l.fecha, new Date(), c.minutosSinDatos) : true;
     var est = vencida ? "gris" : res.estado;
 
     // Aviso de error
@@ -265,7 +263,7 @@
     caja.setAttribute("data-estado", est);
     var t = TEXTOS[est];
     var desc = t.desc;
-    if (est === "rojo" && res.fuera.length === 1) desc = "Una variable superó su límite crítico. No reutilices esta agua.";
+    if (est === "rojo" && res.enRango >= 2) desc = "Un parámetro superó su límite crítico. No reutilices esta agua.";
     if (est === "gris" && l && vencida) desc = "La última lectura tiene más de " + c.minutosSinDatos + " min. Revisa que el ESP32 esté encendido y con WiFi.";
     else if (est === "gris" && l && res.faltantes.length) desc = "Faltan lecturas de: " + res.faltantes.map(function (k) { return S.VARIABLES[k].nombre; }).join(", ") + ".";
     $("#semaforo-etiqueta").textContent = t.etq;
@@ -302,20 +300,6 @@
       marca.classList.toggle("medidor__marca--fuera", res.detalle[k] === "fuera" || res.detalle[k] === "critico");
       card.querySelector("[data-rango-txt]").textContent = textoRango(k);
       card.setAttribute("aria-label", S.VARIABLES[k].nombre + ": " + conUnidad(k, valor) + ", " + textoRango(k) + ". Ver historial.");
-    });
-
-    // Temperatura (informativa, no entra al semáforo)
-    var nt = $("#nota-temp");
-    nt.hidden = !(l && l.temperatura !== null);
-    if (l && l.temperatura !== null) {
-      nt.textContent = "Temperatura del agua: " + fmt(l.temperatura, 1) + " °C. Se usa para compensar pH y conductividad; no entra al semáforo.";
-    }
-
-    // Control de demo
-    var dc = $("#demo-control");
-    dc.hidden = c.fuente !== "demo";
-    $$("[data-escenario]").forEach(function (b) {
-      b.setAttribute("aria-pressed", String(b.getAttribute("data-escenario") === demo.escenario()));
     });
   }
 
@@ -568,7 +552,7 @@
   function leerFormulario() {
     var f = $("#form-ajustes");
     var c = copiar(estado.config);
-    c.fuente = f.fuente.value || "demo";
+    c.fuente = f.fuente.value || "thingspeak";
     c.thingspeak.channelId = f.channelId.value.trim();
     c.thingspeak.readApiKey = f.readApiKey.value.trim();
     c.intervaloSeg = parseInt(f.intervaloSeg.value, 10) || 20;
@@ -606,13 +590,6 @@
     document.addEventListener("visibilitychange", function () { if (!document.hidden) actualizar(); });
 
     $("#btn-actualizar").addEventListener("click", actualizar);
-
-    $$("[data-escenario]").forEach(function (b) {
-      b.addEventListener("click", function () {
-        demo.cambiarEscenario(b.getAttribute("data-escenario"));
-        actualizar();
-      });
-    });
 
     $$("[data-variable]").forEach(function (b) {
       b.addEventListener("click", function () {

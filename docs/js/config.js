@@ -7,13 +7,13 @@
  * La WRITE API KEY vive únicamente en el firmware del ESP32. Nunca en la página.
  */
 window.APP_CONFIG = {
-  // "thingspeak" (ESP32 real, funciona en GitHub Pages), "api" (MariaDB, solo en localhost con Docker)
-  // o "demo" (datos de ejemplo para presentar sin hardware)
+  // "thingspeak" (ESP32 real, funciona en GitHub Pages) o "api" (MariaDB, solo en localhost con Docker).
+  // Ya no hay modo demo ni simulación: la página solo muestra lecturas del ESP32.
   fuente: "thingspeak",
 
   thingspeak: {
     channelId: "3591663",     // ej. "2741234"
-    readApiKey: ""     // vacío si el canal es público
+    readApiKey: ""     // el canal es privado: aquí va la READ API Key (la pone configurar-pagina.sh)
   },
 
   // API propia (MariaDB). Vacío = el mismo servidor que sirve la página (Docker, localhost:8080).

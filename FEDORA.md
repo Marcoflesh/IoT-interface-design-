@@ -17,6 +17,8 @@ ESP32 ──HTTP (WiFi)──► http://IP-DE-TU-LAPTOP:8080/api/lecturas
 
 > ¿Prefieres que MariaDB también corra en Docker? Usa `docker-compose.yml` (README). No corras las dos versiones a la vez: ambas usan el puerto 8080.
 
+> **¿Ya tienes el ESP32 terminado y quieres empezar limpio, con un canal nuevo de ThingSpeak y una base vacía?** Ve al [Paso 12](#paso-12--empezar-de-cero-canal-nuevo-y-base-limpia). La explicación completa, con qué va en cada archivo, está en [PUESTA_EN_MARCHA.md](PUESTA_EN_MARCHA.md).
+
 ---
 
 ## Paso 1 · Instalar Docker en Fedora
@@ -261,28 +263,28 @@ El puente no duplica (usa el `entry_id` de ThingSpeak), conserva la hora origina
 5. **Save Channel** (abajo).
 6. El **Channel ID** es el número que aparece arriba en la página del canal.
 7. Pestaña **API Keys**: ahí están la **Write API Key** (para escribir) y la **Read API Key** (para leer).
-8. Pestaña **Sharing**: elige **Share channel view with everyone** (canal público). Así la página de GitHub no necesita Read API Key.
+8. Pestaña **Sharing**: deja **Keep channel view private**. El puente y la página leen el canal con la **Read API Key**.
 
 ### 11.2 · Llenar el `.env`
 
 ```ini
 THINGSPEAK_CHANNEL_ID=2741234
-THINGSPEAK_READ_KEY=
-THINGSPEAK_WRITE_KEY=XXXXXXXXXXXXXXXX
+THINGSPEAK_READ_KEY=ABCDEFGH12345678
+THINGSPEAK_WRITE_KEY=
 PUENTE_INTERVALO=60
 ```
 
-- `THINGSPEAK_READ_KEY` vacía si el canal es público.
-- `THINGSPEAK_WRITE_KEY`: solo la usa la prueba de escritura. La del ESP32 va en `secretos.h`.
+- `THINGSPEAK_READ_KEY` es obligatoria: el canal es privado.
+- `THINGSPEAK_WRITE_KEY` puede ir vacía; solo la usa `probar-thingspeak.sh --escribir`. La del ESP32 va en `secretos.h`.
 - `THINGSPEAK_CHANNEL_ID` también lo usa la API: con él enlaza cada lectura directa con su entrada de ThingSpeak. Después de cambiarlo, `docker compose -f docker-compose.fedora.yml up -d --force-recreate api`.
 
 ### 11.3 · Probar el canal desde la terminal
 
 ```bash
-bash scripts/fedora/probar-thingspeak.sh --escribir
+bash scripts/fedora/probar-thingspeak.sh
 ```
 
-Escribe una lectura de prueba, la vuelve a leer y revisa que los 4 campos estén en el orden correcto.
+Lee el canal con tu Read Key y revisa que los 4 campos estén en el orden correcto. Con `--escribir` además guarda una lectura de prueba, pero **no lo uses en el canal que vas a presentar**: esa lectura falsa terminaría en la página y en MariaDB.
 
 ### 11.4 · Encender el puente
 
@@ -317,7 +319,71 @@ git commit -m "Página: leer el canal de ThingSpeak"
 git push
 ```
 
-En 1 o 2 minutos https://marcoflesh.github.io/IoT-interface-design-/ arranca leyendo tu canal. Si ya habías guardado otra fuente en **Ajustes** de ese navegador, esa tiene prioridad: elige **ThingSpeak** en Ajustes y **Guardar**. Para volver al demo: `bash scripts/configurar-pagina.sh --demo`.
+En 1 o 2 minutos https://marcoflesh.github.io/IoT-interface-design-/ arranca leyendo tu canal. Si ya habías guardado otro canal en **Ajustes** de ese navegador, ese tiene prioridad: corrígelo ahí y **Guardar**, o usa **Restaurar valores**. La página ya no tiene modo demo: solo muestra lecturas del ESP32.
+
+## Paso 12 · Empezar de cero: canal nuevo y base limpia
+
+Para cuando el ESP32 está terminado y quieres que la base y el canal solo tengan lecturas reales. Cada paso está explicado en [PUESTA_EN_MARCHA.md](PUESTA_EN_MARCHA.md).
+
+**12.1 · Última versión del repo**
+
+```bash
+cd ~/IoT-interface-design-/IoT-interface-design-
+git restore proyecto/
+git pull
+```
+
+**12.2 · Canal nuevo de ThingSpeak:** Field 1 `pH`, Field 2 `Turbidez`, Field 3 `Conductividad`, Field 4 `Temperatura`; **Sharing → Keep channel view private**; copia el Channel ID, la Write Key y la Read Key (como en 11.1).
+
+**12.3 · `.env`** con el canal nuevo (borra `PUENTE_DISPOSITIVO` y cualquier `SIM_…` si siguen ahí):
+
+```ini
+THINGSPEAK_CHANNEL_ID=número del canal nuevo
+THINGSPEAK_READ_KEY=Read API Key del canal nuevo
+THINGSPEAK_WRITE_KEY=
+PUENTE_INTERVALO=60
+```
+
+```bash
+bash scripts/fedora/probar-thingspeak.sh          # sin --escribir: el canal debe seguir vacío
+```
+
+**12.4 · Borrar la base vieja y crear una nueva**
+
+```bash
+bash scripts/fedora/base-nueva.sh
+```
+
+Te enseña lo que hay, pide escribir `calidad_agua` para confirmar, apaga la API y el puente, hace un respaldo en `respaldos/`, borra la base y la crea con todas las migraciones. Debe terminar en `0 lecturas, dispositivo(s): esp32-1`.
+
+**12.5 · Levantar página, API y puente**
+
+```bash
+docker compose -f docker-compose.fedora.yml --profile thingspeak up -d --build --force-recreate
+bash scripts/fedora/probar-conexion.sh            # te da el API_URL para el ESP32; no guarda nada
+docker logs calidad-agua-puente                   # canal nuevo · dispositivo esp32-1 · cada 60 s
+```
+
+**12.6 · ESP32:** `esp32/calidad_agua/secretos.h` con `Tec-IoT`, la **Write Key del canal nuevo**, el `API_URL` del paso anterior y `API_KEY` igual a `ESP32_API_KEY` del `.env`. Sube `calidad_agua.ino`; en el monitor serie, cada 20 s: `ThingSpeak -> entrada N` y `API -> 201 guardado en MariaDB`.
+
+**12.7 · Revisar**
+
+```bash
+bash scripts/fedora/ver-mariadb.sh --seguir
+```
+
+Solo `esp32-1`, la columna `en_rango` y el semáforo de 4 parámetros, y la sección "¿Alguna lectura repetida?" vacía. En DBeaver, **F5** sobre `calidad_agua` (mismas credenciales de siempre).
+
+**12.8 · Páginas:** en http://localhost:8080, **Ajustes → MariaDB → Guardar**. Para GitHub Pages:
+
+```bash
+bash scripts/configurar-pagina.sh
+git add docs/js/config.js
+git commit -m "Página: canal nuevo de ThingSpeak"
+git push
+```
+
+**Cómo no se mezclan los datos:** cada lectura del ESP32 queda **una sola vez** en `lecturas`. El ESP32 publica en ThingSpeak y le pasa a la API el número de entrada que recibió. El puente solo copia las entradas que no llegaron directo (por ejemplo, si la laptop estaba apagada). La columna `origen` dice por dónde llegó cada una (`api` o `thingspeak`) y la base nunca rellena huecos entre lecturas.
 
 ## Respaldos
 
@@ -337,7 +403,8 @@ Guarda los 14 más recientes. Haz uno antes de cada demo y antes de borrar datos
 | Ver qué llega del ESP32 | `docker logs -f calidad-agua-api` |
 | Revisar todo | `bash scripts/fedora/probar-conexion.sh` |
 | No abre localhost:8080 | `bash scripts/fedora/diagnosticar.sh` |
-| Copiar ThingSpeak a MariaDB | `docker compose -f docker-compose.fedora.yml --profile thingspeak up -d` |
+| Encender todo con el puente | `docker compose -f docker-compose.fedora.yml --profile thingspeak up -d` |
+| Empezar con una base vacía | `bash scripts/fedora/base-nueva.sh` (Paso 12) |
 | Respaldar la base | `bash scripts/fedora/respaldar.sh` |
 | Ver los datos llegar (sin DBeaver) | `bash scripts/fedora/ver-mariadb.sh --seguir` |
 | Saber tu IP actual | `ip -4 route get 1.1.1.1` (el valor después de `src`) |

@@ -3,10 +3,10 @@
  * Lógica pura del semáforo de calidad del agua (sin DOM).
  * Se usa en el navegador (window.Semaforo) y en Node para las pruebas.
  *
- * Regla del equipo:
- *   verde    = las 3 variables dentro de rango
- *   amarillo = 1 variable fuera de rango
- *   rojo     = 2 o 3 variables fuera de rango
+ * Regla del equipo (4 parámetros: pH, turbidez, conductividad y temperatura):
+ *   verde    = los 4 en rango
+ *   amarillo = 3 o 2 de 4 en rango
+ *   rojo     = 1 o 0 de 4 en rango
  *   gris     = falta al menos una lectura (no se puede evaluar)
  * Opcional: "crítico = rojo directo" si una sola variable rebasa su límite crítico.
  */
@@ -18,20 +18,24 @@
   // Conductividad: la norma no la fija; se deriva del límite de SDT (1000 mg/L)
   // con factor TDS ≈ 0.65 x EC  →  ≈ 1500 µS/cm. Mínimo 50 µS/cm (spec del equipo):
   // abajo de eso casi siempre es la sonda fuera del agua o desconectada.
+  // Temperatura: la NOM-127 no fija un rango. 10 a 30 °C es una propuesta del equipo
+  // (agua de la llave a temperatura ambiente); ajústenla en la pantalla Ajustes.
   // Límites críticos: propuesta del equipo, ajustables en la pantalla Ajustes.
   var UMBRALES_DEFECTO = {
     ph:            { min: 6.5, max: 8.5,  critMin: 6.0, critMax: 9.0 },
     turbidez:      { min: 0,   max: 4,    critMin: null, critMax: 50 },
-    conductividad: { min: 50,  max: 1500, critMin: null, critMax: 3000 }
+    conductividad: { min: 50,  max: 1500, critMin: null, critMax: 3000 },
+    temperatura:   { min: 10,  max: 30,   critMin: 5,    critMax: 35 }
   };
 
   var VARIABLES = {
     ph:            { nombre: "pH",            unidad: "",      decimales: 2, escalaMin: 0, escalaMax: 14 },
     turbidez:      { nombre: "Turbidez",      unidad: "NTU",   decimales: 1, escalaMin: 0, escalaMax: 20 },
-    conductividad: { nombre: "Conductividad", unidad: "µS/cm", decimales: 0, escalaMin: 0, escalaMax: 3000 }
+    conductividad: { nombre: "Conductividad", unidad: "µS/cm", decimales: 0, escalaMin: 0, escalaMax: 3000 },
+    temperatura:   { nombre: "Temperatura",   unidad: "°C",    decimales: 1, escalaMin: 0, escalaMax: 40 }
   };
 
-  var CLAVES = ["ph", "turbidez", "conductividad"];
+  var CLAVES = ["ph", "turbidez", "conductividad", "temperatura"];
 
   function esNumero(v) {
     return typeof v === "number" && isFinite(v);
@@ -49,7 +53,7 @@
     return "ok";
   }
 
-  // lectura: { ph, turbidez, conductividad }
+  // lectura: { ph, turbidez, conductividad, temperatura }
   // umbrales: mismo formato que UMBRALES_DEFECTO
   // opciones: { criticoRojo: boolean }
   function clasificar(lectura, umbrales, opciones) {
@@ -73,12 +77,12 @@
       resultado.estado = "gris";
     } else if (opciones.criticoRojo && resultado.criticos.length > 0) {
       resultado.estado = "rojo";
-    } else if (resultado.fuera.length === 0) {
-      resultado.estado = "verde";
-    } else if (resultado.fuera.length === 1) {
-      resultado.estado = "amarillo";
+    } else if (resultado.enRango === CLAVES.length) {
+      resultado.estado = "verde";       // 4 de 4
+    } else if (resultado.enRango >= 2) {
+      resultado.estado = "amarillo";    // 3 o 2 de 4
     } else {
-      resultado.estado = "rojo";
+      resultado.estado = "rojo";        // 1 o 0 de 4
     }
     return resultado;
   }

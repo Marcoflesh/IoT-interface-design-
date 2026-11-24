@@ -46,6 +46,9 @@
 - [ ] Comprar e instalar el TSW-10; mientras tanto, decidir si el semáforo evalúa solo pH y conductividad.
 - [x] Un solo dispositivo `esp32-1`; ThingSpeak y API sin duplicados (migración 006).
 - [x] Quitar la distancia de la base (el HC-SR04T solo se imprime en el monitor serie).
+- [x] Semáforo de 4 parámetros con temperatura; sin modo demo.
+- [ ] Seguir `PUESTA_EN_MARCHA.md`: canal nuevo privado, `base-nueva.sh`, puente y ESP32 con la Write Key nueva.
+- [ ] Confirmar con el profesor el rango de temperatura (hoy 10 a 30 °C, propuesta del equipo).
 - [ ] Actualizar el laboratorio a los sensores reales (TSW-10, Keyestudio TDS V1).
 - [ ] Crear `.env` y levantar `docker compose` (Guía, Pasos 1 y 2).
 - [ ] Crear canal ThingSpeak con field1 a field4 (Paso 3).

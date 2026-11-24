@@ -185,22 +185,24 @@ Si el simulador publicó en tu canal de ThingSpeak, esas lecturas siguen ahí: b
 
 ## Paso 10 · ThingSpeak y el puente ThingSpeak → MariaDB
 
-**10.1 Crear el canal.** En **thingspeak.mathworks.com** entra con tu cuenta de MathWorks → **Channels → My Channels → New Channel** → Name `Calidad del agua` → marca Field 1 a 4 con los nombres `pH`, `Turbidez`, `Conductividad`, `Temperatura` (en ese orden) → **Save Channel**. El **Channel ID** está arriba; las llaves en **API Keys**. En **Sharing** elige **Share channel view with everyone**.
+**10.1 Crear el canal.** En **thingspeak.mathworks.com** entra con tu cuenta de MathWorks → **Channels → My Channels → New Channel** → Name `Calidad del agua` → marca Field 1 a 4 con los nombres `pH`, `Turbidez`, `Conductividad`, `Temperatura` (en ese orden) → **Save Channel**. El **Channel ID** está arriba; las llaves en **API Keys**. En **Sharing** deja el canal privado: el puente y la página lo leen con la **Read API Key**.
 
 **10.2 En el `.env`:**
 
 ```ini
 THINGSPEAK_CHANNEL_ID=2741234
-THINGSPEAK_READ_KEY=
-THINGSPEAK_WRITE_KEY=XXXXXXXXXXXXXXXX
+THINGSPEAK_READ_KEY=ABCDEFGH12345678
+THINGSPEAK_WRITE_KEY=
 PUENTE_INTERVALO=60
 ```
 
 **10.3 Probar el canal:**
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts\windows\probar-thingspeak.ps1 -Escribir
+powershell -ExecutionPolicy Bypass -File scripts\windows\probar-thingspeak.ps1
 ```
+
+Sin `-Escribir`: así no se guarda una lectura de prueba en el canal que van a presentar.
 
 **10.4 Encender el puente** (copia cada minuto las lecturas nuevas del canal a MariaDB, sin duplicar y con su hora original):
 
@@ -220,7 +222,7 @@ git commit -m "Página: leer el canal de ThingSpeak"
 git push
 ```
 
-En 1 o 2 minutos https://marcoflesh.github.io/IoT-interface-design-/ lee tu canal. Para volver al demo: `configurar-pagina.ps1 -Demo`.
+En 1 o 2 minutos https://marcoflesh.github.io/IoT-interface-design-/ lee tu canal.
 
 ## Respaldos
 

@@ -41,7 +41,7 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
           <span>Ajustes</span></a></li>
       </ul>
-      <p class="nav__fuente" id="nav-fuente">Fuente: demo</p>
+      <p class="nav__fuente" id="nav-fuente">Fuente: ThingSpeak</p>
     </nav>
 
     <main id="contenido" class="contenido" tabindex="-1">
@@ -74,22 +74,13 @@
           </div>
           <div class="semaforo__conteo">
             <p class="conteo__num" id="conteo-num">–</p>
-            <p class="conteo__txt">de 3 variables <br>en rango</p>
+            <p class="conteo__txt">de 4 parámetros <br>en rango</p>
           </div>
         </div>
 
-        <div class="demo-control" id="demo-control" hidden>
-          <p class="demo-control__titulo">Modo demo · simular muestra</p>
-          <div class="segmentado" role="group" aria-label="Escenario de demostración">
-            <button type="button" class="segmentado__op" data-escenario="limpia">Limpia</button>
-            <button type="button" class="segmentado__op" data-escenario="precaucion">1 fuera</button>
-            <button type="button" class="segmentado__op" data-escenario="noApta">No apta</button>
-          </div>
-        </div>
 
         <div class="variables" id="variables"></div>
 
-        <p class="nota-temp" id="nota-temp" hidden></p>
       </section>
 
       <!-- ===================== 2. HISTORIAL ===================== -->
@@ -106,6 +97,7 @@
             <button type="button" class="segmentado__op" data-variable="ph">pH</button>
             <button type="button" class="segmentado__op" data-variable="turbidez">Turbidez</button>
             <button type="button" class="segmentado__op" data-variable="conductividad">Conductividad</button>
+            <button type="button" class="segmentado__op" data-variable="temperatura">Temperatura</button>
           </div>
           <div class="segmentado" role="group" aria-label="Cantidad de lecturas" id="hist-rango">
             <button type="button" class="segmentado__op" data-rango="20">20</button>
@@ -126,7 +118,7 @@
           <summary>Ver tabla de lecturas</summary>
           <div class="tabla-scroll">
             <table class="tabla">
-              <thead><tr><th scope="col">Hora</th><th scope="col">pH</th><th scope="col">Turbidez (NTU)</th><th scope="col">Conductividad (µS/cm)</th><th scope="col">Estado</th></tr></thead>
+              <thead><tr><th scope="col">Hora</th><th scope="col">pH</th><th scope="col">Turbidez (NTU)</th><th scope="col">Conductividad (µS/cm)</th><th scope="col">Temperatura (°C)</th><th scope="col">Estado</th></tr></thead>
               <tbody id="hist-tabla"></tbody>
             </table>
           </div>
@@ -171,7 +163,6 @@
           <fieldset class="tarjeta">
             <legend>Fuente de datos</legend>
             <div class="radios">
-              <label class="radio"><input type="radio" name="fuente" value="demo"> <span><strong>Demo</strong> · datos simulados para presentar sin hardware</span></label>
               <label class="radio"><input type="radio" name="fuente" value="thingspeak"> <span><strong>ThingSpeak</strong> · lecturas reales del ESP32 (funciona en GitHub Pages)</span></label>
               <label class="radio"><input type="radio" name="fuente" value="api"> <span><strong>MariaDB</strong> · lecturas del ESP32 (esp32-1) guardadas en la laptop, solo en localhost con Docker</span></label>
             </div>
@@ -181,7 +172,7 @@
               </label>
               <label class="campo">Read API Key
                 <input type="text" name="readApiKey" autocomplete="off" spellcheck="false" placeholder="ABCD1234EFGH5678…">
-                <span class="campo__ayuda">Déjala vacía si el canal es público.</span>
+                <span class="campo__ayuda">Necesaria: el canal es privado.</span>
               </label>
               <label class="campo">Actualizar cada (segundos)
                 <input type="number" name="intervaloSeg" min="15" max="600" step="1">
@@ -192,7 +183,7 @@
 
           <fieldset class="tarjeta">
             <legend>Umbrales del semáforo</legend>
-            <p class="ajustes__regla">Verde: 3 en rango · Amarillo: 1 fuera · Rojo: 2 o 3 fuera</p>
+            <p class="ajustes__regla">Verde: 4 de 4 en rango · Amarillo: 3 o 2 de 4 · Rojo: 1 o 0 de 4</p>
             <div class="tabla-scroll">
               <table class="tabla tabla--umbrales">
                 <thead><tr><th scope="col">Variable</th><th scope="col">Mínimo</th><th scope="col">Máximo</th><th scope="col">Crítico mín.</th><th scope="col">Crítico máx.</th></tr></thead>
@@ -215,7 +206,7 @@
       </section>
 
       <footer class="pie">
-        <p>Indicadores de calidad, no un análisis de laboratorio certificado. Referencia de umbrales: NOM-127-SSA1-2021.</p>
+        <p>Indicadores de calidad, no un análisis de laboratorio certificado. Referencia de umbrales: NOM-127-SSA1-2021 (pH, turbidez y sólidos disueltos); el rango de temperatura es una propuesta del equipo.</p>
       </footer>
     </main>
   </div>

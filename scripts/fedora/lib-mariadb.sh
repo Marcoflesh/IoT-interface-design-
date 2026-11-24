@@ -54,14 +54,16 @@ TXT
 
 conectar_root() {
   local clave salida
-  clave=$(leer_env DB_ROOT_PASSWORD)
+  # MARIADB_ROOT_CLAVE: la pasa base-nueva.sh a los scripts que llama, para no preguntar tres veces.
+  clave=${MARIADB_ROOT_CLAVE:-$(leer_env DB_ROOT_PASSWORD)}
+  ROOT_CLAVE=""
   case "$clave" in cambia-esta-clave-root|no-se-usa-en-fedora) clave="" ;; esac
 
   # 1) Contraseña en el .env
   if [ -n "$clave" ]; then
     ROOT=(env "MYSQL_PWD=$clave" mariadb -u root)
     ROOT_DUMP=(env "MYSQL_PWD=$clave" "$(command -v mariadb-dump || command -v mysqldump)" -u root)
-    if salida=$("${ROOT[@]}" -e "SELECT 1" 2>&1); then MODO_ROOT="contraseña del .env"; return 0; fi
+    if salida=$("${ROOT[@]}" -e "SELECT 1" 2>&1); then MODO_ROOT="contraseña del .env"; ROOT_CLAVE=$clave; return 0; fi
     explicar_error_root "$salida"
   fi
 
@@ -94,6 +96,6 @@ conectar_root() {
   [ -n "$clave" ] || explicar_error_root "1045 contraseña vacía"
   ROOT=(env "MYSQL_PWD=$clave" mariadb -u root)
   ROOT_DUMP=(env "MYSQL_PWD=$clave" "$(command -v mariadb-dump || command -v mysqldump)" -u root)
-  if salida=$("${ROOT[@]}" -e "SELECT 1" 2>&1); then MODO_ROOT="contraseña escrita"; return 0; fi
+  if salida=$("${ROOT[@]}" -e "SELECT 1" 2>&1); then MODO_ROOT="contraseña escrita"; ROOT_CLAVE=$clave; return 0; fi
   explicar_error_root "$salida"
 }

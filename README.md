@@ -24,7 +24,9 @@ Todo lo local corre con un solo `docker compose up`:
 
 > 🔁 **¿El ESP32 solo puede mandar a ThingSpeak?** El puente (`api/src/puente-thingspeak.js`, perfil `thingspeak`) copia cada minuto las lecturas nuevas del canal a MariaDB sin duplicar. Ver [FEDORA.md, Paso 11](FEDORA.md).
 
-La página tiene 4 pantallas: **Inicio** (semáforo y 3 variables), **Historial** (gráficas), **Alertas** (cambios de color) y **Ajustes** (fuente de datos y umbrales). Puede leer de **ThingSpeak**, de **MariaDB** (solo en localhost) o de un **modo demo** para presentar sin hardware.
+La página tiene 4 pantallas: **Inicio** (semáforo y 4 parámetros: pH, turbidez, conductividad y temperatura), **Historial** (una gráfica por parámetro), **Alertas** (cambios de color) y **Ajustes** (fuente de datos y umbrales). Lee las lecturas del ESP32 de **ThingSpeak** (canal privado, con Read API Key) o de **MariaDB** (solo en localhost). Ya no tiene modo demo ni simulación.
+
+> ✅ **Puesta en marcha con el ESP32 terminado, canal nuevo y base limpia:** [PUESTA_EN_MARCHA.md](PUESTA_EN_MARCHA.md).
 
 ---
 
@@ -35,15 +37,16 @@ La página tiene 4 pantallas: **Inicio** (semáforo y 3 variables), **Historial*
 | pH | 6.5 a 8.5 | NOM-127-SSA1-2021 |
 | Turbidez | ≤ 4 NTU | NOM-127-SSA1-2021 (4 UNT) |
 | Conductividad | 50 a 1500 µS/cm | Derivado del límite de SDT de la NOM (1000 mg/L, factor ≈ 0.65). Abajo de 50 suele ser la sonda fuera del agua. |
+| Temperatura | 10 a 30 °C | Propuesta del equipo: la NOM-127 no fija temperatura. Se cambia en Ajustes. |
 
 | Color | Regla |
 |---|---|
-| 🟢 Verde | Las 3 variables dentro de rango |
-| 🟡 Amarillo | 1 variable fuera de rango |
-| 🔴 Rojo | 2 o 3 variables fuera de rango |
+| 🟢 Verde | Los 4 parámetros en rango |
+| 🟡 Amarillo | 3 o 2 de los 4 en rango |
+| 🔴 Rojo | 1 o ninguno de los 4 en rango |
 | ⚪ Gris | Falta una lectura, o la última tiene más de 3 min (el ESP32 dejó de enviar) |
 
-**Opcional (apagado por defecto, en Ajustes):** rojo inmediato si una sola variable pasa su límite crítico (pH < 6.0 o > 9.0, turbidez > 50 NTU, conductividad > 3000 µS/cm).
+**Opcional (apagado por defecto, en Ajustes):** rojo inmediato si un solo parámetro pasa su límite crítico (pH < 6.0 o > 9.0, turbidez > 50 NTU, conductividad > 3000 µS/cm, temperatura < 5 o > 35 °C).
 
 ---
 
@@ -79,7 +82,7 @@ docker compose ps             # los 4 servicios deben decir "running" (db: "heal
 
 Revisen:
 
-- http://localhost:8080 → la página (arranca en modo demo).
+- http://localhost:8080 → la página (arranca leyendo ThingSpeak; en Ajustes se cambia a MariaDB).
 - http://localhost:8080/api/salud → debe responder `{"ok":true,"base":"MariaDB","lecturas":0,...}`.
 - http://localhost:8081 → Adminer. Sistema: **MariaDB/MySQL**, servidor: `db`, usuario y contraseña de su `.env`, base: `calidad_agua`.
 
@@ -99,7 +102,7 @@ Los cambios dentro de `docs/` se ven con solo recargar el navegador. Si cambian 
 2. Llenen los campos **en este orden** (la página depende de él): Field 1 `pH`, Field 2 `Turbidez`, Field 3 `Conductividad`, Field 4 `Temperatura`.
 3. **Save Channel** y anoten el **Channel ID**.
 4. Pestaña **API Keys**: copien la **Write API Key** (para el ESP32) y la **Read API Key** (para la página).
-5. Opcional: en **Sharing** elijan "Share channel view with everyone" y la página no necesitará Read API Key.
+5. En **Sharing** dejen el canal privado y copien la **Read API Key**: la usan el puente y la página.
 
 ## Paso 4 · Firmware: ESP32 → ThingSpeak + MariaDB (en lugar de Ubidots)
 
@@ -134,14 +137,13 @@ En la página → **Ajustes** → Fuente de datos → **Probar conexión** → *
 | Fuente | Dónde funciona | Para qué |
 |---|---|---|
 | ThingSpeak | localhost y GitHub Pages | La versión pública |
-| MariaDB | Solo http://localhost:8080 (Docker) | Demo en clase con su propia base |
-| Demo | Siempre | Presentar sin hardware |
+| MariaDB | Solo http://localhost:8080 (Docker) | Ver la base propia, con lo directo y lo copiado por el puente |
 
-Los Ajustes se guardan en cada navegador. Para que la versión publicada **ya arranque con ThingSpeak**, editen `docs/js/config.js`:
+Los Ajustes se guardan en cada navegador. Para que la versión publicada **ya arranque con su canal**, corran `bash scripts/configurar-pagina.sh` (toma el Channel ID y la Read Key del `.env`) o editen `docs/js/config.js`:
 
 ```js
 fuente: "thingspeak",
-thingspeak: { channelId: "SU_CHANNEL_ID", readApiKey: "SU_READ_KEY_O_VACIO" },
+thingspeak: { channelId: "SU_CHANNEL_ID", readApiKey: "SU_READ_KEY" },
 ```
 
 ⚠️ Nunca pongan la Write API Key ni la `ESP32_API_KEY` en `docs/`: todo lo que está ahí es público.
@@ -153,7 +155,9 @@ thingspeak: { channelId: "SU_CHANNEL_ID", readApiKey: "SU_READ_KEY_O_VACIO" },
 | Agua de la llave o purificada | 🟢 Verde |
 | Agua con un poco de tierra | 🟡 Amarillo (turbidez alta) |
 | Agua con bastante sal | 🟡 Amarillo (conductividad alta) |
-| Agua con tierra y vinagre | 🔴 Rojo (turbidez alta y pH ácido) |
+| Agua con tierra y vinagre | 🟡 Amarillo (2 de 4 en rango: turbidez alta y pH ácido) |
+| Agua con tierra, vinagre y mucha sal | 🔴 Rojo (1 de 4 en rango) |
+| Agua caliente (más de 30 °C) | 🟡 Amarillo (temperatura alta) |
 | Sonda de conductividad fuera del agua | 🟡 Amarillo (conductividad < 50) |
 | Desconectar el ESP32 por 3 min | ⚪ Gris |
 
@@ -217,7 +221,7 @@ IoT-interface-design-/
 │   ├── css/styles.css       ← paleta azul (neutro a oscuro)
 │   ├── js/config.js         ← fuente por defecto, Channel ID, campos
 │   ├── js/semaforo.js       ← reglas del semáforo
-│   ├── js/datos.js          ← ThingSpeak, API (MariaDB) y modo demo
+│   ├── js/datos.js          ← ThingSpeak (privado) y API (MariaDB)
 │   ├── js/app.js            ← pantallas e interacciones
 │   └── js/vendor/           ← Chart.js 4.6.1 (local)
 ├── api/                     ← API Node + Express para MariaDB
@@ -231,9 +235,10 @@ IoT-interface-design-/
 │   └── secretos.example.h
 ├── tests/semaforo.test.js
 ├── proyecto/                ← handoff.md, traceability.md, roadmap.md
-├── scripts/fedora/          ← preparar MariaDB local y probar la conexión
+├── scripts/fedora/          ← preparar MariaDB local, base nueva (base-nueva.sh), probar la conexión, ver datos
 ├── docker-compose.yml · Dockerfile · nginx.conf · .env.example
 ├── docker-compose.fedora.yml · nginx.fedora.conf   ← variante Fedora con MariaDB local
+├── PUESTA_EN_MARCHA.md      ← canal nuevo, base limpia y todo conectado (ESP32 terminado)
 ├── FEDORA.md                ← guía para Fedora + DBeaver
 ├── WINDOWS.md               ← guía para Windows + PowerShell
 ├── scripts/windows/         ← probar conexión, firewall, ver MariaDB, ThingSpeak, página, respaldos

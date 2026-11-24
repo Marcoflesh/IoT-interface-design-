@@ -122,7 +122,7 @@ Siguiente paso, levantar la página y la API:
   docker compose -f docker-compose.fedora.yml up -d --build
   bash scripts/fedora/probar-conexion.sh
 
-En esp32/secretos.h:
+En esp32/calidad_agua/secretos.h:
   API_URL = "http://$IP:8080/api/lecturas"
   API_KEY = (el valor de ESP32_API_KEY en .env)
 FIN

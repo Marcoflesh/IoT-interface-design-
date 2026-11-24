@@ -203,12 +203,8 @@ svg { flex-shrink: 0; }
 .chip--critico, .chip--rojo { background: #FBEAE8; color: var(--rojo); }
 .chip--sin-dato { background: var(--surface-2); color: var(--gris); }
 
-/* ================= Demo ================= */
-.demo-control { display: flex; align-items: center; gap: var(--s-4); flex-wrap: wrap; }
-.demo-control__titulo { font-size: 13px; font-weight: 600; color: var(--muted); }
-
 /* ================= Tarjetas de variables ================= */
-.variables { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-6); }
+.variables { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-6); }
 .variable {
   display: flex; flex-direction: column; gap: var(--s-4);
   text-align: left; font: inherit; color: inherit; text-decoration: none; cursor: pointer;
@@ -217,7 +213,7 @@ svg { flex-shrink: 0; }
 @media (hover: hover) and (pointer: fine) {
   .variable:hover { border-color: var(--primary); box-shadow: 0 4px 16px rgba(29, 79, 143, .12); }
 }
-.variable__cab { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); }
+.variable__cab { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-2); }
 .variable__nombre { font-weight: 600; }
 .variable__valor { font-family: var(--mono); font-size: 40px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
 .variable__unidad { font-family: var(--font); font-size: 15px; font-weight: 500; color: var(--muted); margin-left: 6px; letter-spacing: 0; }
@@ -232,9 +228,9 @@ svg { flex-shrink: 0; }
 }
 .medidor__marca--fuera { background: var(--rojo); box-shadow: 0 0 0 1px var(--rojo); }
 .medidor__escala { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.medidor__rango { display: block; font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .variable__pie { font-size: 13px; color: var(--primary); font-weight: 600; }
 
-.nota-temp { color: var(--muted); font-size: 14px; }
 
 /* ================= Historial ================= */
 .filtros { display: flex; flex-wrap: wrap; gap: var(--s-4); justify-content: space-between; }
@@ -312,6 +308,9 @@ legend { font-weight: 700; font-size: 16px; padding: 0 var(--s-2); margin-left: 
 
 
 /* ================= Responsive ================= */
+@media (max-width: 1180px) {
+  .variables { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 1080px) {
   .estadisticas { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .contenido { padding: var(--s-6); }
@@ -337,7 +336,6 @@ legend { font-weight: 700; font-size: 16px; padding: 0 var(--s-2); margin-left: 
   .luz { width: 28px; height: 28px; }
   .semaforo__etiqueta { font-size: 24px; }
   .campos { grid-template-columns: 1fr; }
-  .demo-control .segmentado { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; }
   .estadisticas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grafica__lienzo { height: 260px; }
   .evento { grid-template-columns: auto 1fr; }

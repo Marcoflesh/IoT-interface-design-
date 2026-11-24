@@ -5,18 +5,18 @@
 ## Pantallas
 | # | Pantalla | Propósito | Navegación |
 |---|---|---|---|
-| P1 | Inicio | Semáforo, conteo de variables en rango, 3 tarjetas con medidor, temperatura, control demo | Tarjeta → P2 de esa variable |
+| P1 | Inicio | Semáforo, conteo de parámetros en rango (de 4), 4 tarjetas con medidor | Tarjeta → P2 de esa variable |
 | P2 | Historial | Gráfica con banda de rango, puntos fuera de rango, estadísticas, tabla | Botones de variable y de 20/50/100 lecturas |
 | P3 | Alertas | Distribución de estados y lista de cambios de color con filtros | Insignia en el menú con el número de alertas |
-| P4 | Ajustes | Fuente (demo/ThingSpeak/MariaDB), Channel ID, Read Key, dispositivo, intervalo, umbrales, crítico |
+| P4 | Ajustes | Fuente (ThingSpeak/MariaDB), Channel ID, Read Key, dispositivo, intervalo, umbrales, crítico |
 
 ## Matriz requisito → implementación
 | ID | Fuente | Requisito | Dónde se cumple | Estado |
 |---|---|---|---|---|
 | R1 | Actividad §3 | 3 a 5 pantallas | P1 a P4 | ✅ Hecho |
 | R2 | Actividad §3 | Nombre, elementos, info, interacciones, navegación por pantalla | Tabla de arriba + página | ✅ Hecho (falta pasarlo a wireframes) |
-| R3 | Usuario | Semáforo con pH, turbidez, conductividad | `semaforo.js`, P1 | ✅ Hecho |
-| R4 | Usuario | Verde 3 en rango, amarillo 1 fuera, rojo 2-3 fuera | `clasificar()` + 8 pruebas | ✅ Hecho |
+| R3 | Usuario | Semáforo con pH, turbidez, conductividad y temperatura | `semaforo.js`, P1 | ✅ Hecho (4 parámetros desde R44) |
+| R4 | Usuario | Verde 4/4 en rango, amarillo 3 o 2/4, rojo 1 o 0/4 | `clasificar()` + 11 pruebas | ✅ Hecho (regla nueva R44) |
 | R5 | Usuario | Definir parámetros de calidad | NOM-127-SSA1-2021 + conductividad derivada | ✅ Hecho |
 | R6 | Spec §5 | Gráficas y tendencias | P2 | ✅ Hecho |
 | R7 | Spec §5 | Alertas | P3 | ✅ Hecho |
@@ -56,3 +56,10 @@
 | R41 | Usuario | Temperatura en la base | Columna `lecturas.temperatura` (desde 001); el firmware la manda | ✅ Ya existía |
 | R42 | Usuario | Configurar la página para un solo dispositivo | Sin campo "Dispositivo en MariaDB" en Ajustes, sin filtro en `datos.js` | ✅ Hecho (Chrome) |
 | R43 | Usuario | Eliminar el laboratorio | Ya retirado en R36 | ✅ Hecho |
+| R44 | Usuario | Semáforo de 4 parámetros: verde 4/4, amarillo 3-2/4, rojo 1-0/4 | `semaforo.js`, textos de Inicio y Ajustes, `ver-mariadb` en SQL | ✅ Hecho (11 pruebas) |
+| R45 | Usuario | Temperatura en la página, el semáforo y las gráficas | Tarjeta, Historial (botón, gráfica, tabla), umbrales 10 a 30 °C editables | ✅ Hecho (Chrome) |
+| R46 | Usuario | Quitar simulación y labs de la página | Modo demo eliminado (control, fuente, generador, `--demo`) | ✅ Hecho |
+| R47 | Usuario | Canal nuevo privado con Read API Key | `configurar-pagina` exige Read Key; puente y página la usan; guías | ✅ Hecho |
+| R48 | Usuario | Borrar la base vieja y crear una nueva limpia | `scripts/fedora/base-nueva.sh` | ✅ Hecho (probado con MariaDB real) |
+| R49 | Usuario | Que no se mezclen/dupliquen ThingSpeak y lo directo | entry_id único + `origen`; revisión de repetidos en `ver-mariadb` y DBeaver | ✅ Hecho (5 entradas → 5 filas) |
+| R50 | Usuario | Paso a paso completo en un archivo nuevo + FEDORA.md | `PUESTA_EN_MARCHA.md`, FEDORA.md Paso 12 | ✅ Hecho |
