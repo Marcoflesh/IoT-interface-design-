@@ -133,6 +133,7 @@ Ninguna se manda por chat ni se sube a GitHub (`.env` y `secretos.h` están en `
 - Nuevo `esp32/calidad_agua/calidad_agua.ino` (su mismo programa): `secretos.h` (sin la contraseña de Tec-IoT en el repo), `X-API-Key`, `dispositivo`/`firmware`/`rssi`, `conductividad` en µS/cm (su fórmula sin el x0.5; TDS = mitad), `null` si un sensor falla (antes repetía el último valor o mandaba -1), `analogReadMilliVolts`, DS18B20 sin bloquear, envío cada 20 s, imprime la respuesta de la API, ThingSpeak field3/4/5 si hay Write Key. Se borró `envio_datos.ino`.
 - Migración 005: `lecturas.distancia` DECIMAL(6,1) cm. API valida 0 a 600 (cuenta como lectura), GET la devuelve, puente lee field5, `ver-mariadb` la muestra.
 - Pruebas: API 16/16 con MariaDB real. Firmware sin compilar (sin arduino-cli en el entorno).
+- El ESP32 está conectado por USB a la laptop de otro compañero (solo para subir código y ver el monitor serie). `API_URL` debe llevar la IP de la laptop que corre Docker (la de Marco), no la de la laptop del USB; la `ESP32_API_KEY` se le pasa al compañero en privado.
 - Consecuencia: sin pH ni turbidez el semáforo queda gris. Pendiente decidir si evalúa solo lo disponible.
 
 ## Pendiente del equipo
