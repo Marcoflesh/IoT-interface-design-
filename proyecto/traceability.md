@@ -1,6 +1,6 @@
 # Traceability · Web IoT · Calidad del agua
 
-**Actualizado:** 2026-11-21 (base v2, ESP32 virtual, laboratorio oculto)
+**Actualizado:** 2026-11-24 (ESP32 virtual retirado)
 
 ## Pantallas
 | # | Pantalla | Propósito | Navegación |
@@ -8,8 +8,7 @@
 | P1 | Inicio | Semáforo, conteo de variables en rango, 3 tarjetas con medidor, temperatura, control demo | Tarjeta → P2 de esa variable |
 | P2 | Historial | Gráfica con banda de rango, puntos fuera de rango, estadísticas, tabla | Botones de variable y de 20/50/100 lecturas |
 | P3 | Alertas | Distribución de estados y lista de cambios de color con filtros | Insignia en el menú con el número de alertas |
-| P4 | Ajustes | Fuente (demo/ThingSpeak/MariaDB/ESP32 virtual), Channel ID, Read Key, dispositivo, intervalo, umbrales, crítico |
-| P5 (oculta) | Laboratorio | ESP32 virtual: vaso, cadena de la señal, fallas, calibración, monitor serie, envío a la API | Guardar, Probar conexión, Restaurar |
+| P4 | Ajustes | Fuente (demo/ThingSpeak/MariaDB), Channel ID, Read Key, dispositivo, intervalo, umbrales, crítico |
 
 ## Matriz requisito → implementación
 | ID | Fuente | Requisito | Dónde se cumple | Estado |
@@ -37,9 +36,9 @@
 | R22 | Usuario | Paso a paso completo para que funcione el ESP32 en Fedora | FEDORA.md Pasos 1 a 9, `probar-conexion.sh` | ✅ Hecho |
 | R23 | Usuario | Base de datos como la haría un senior | Migraciones, permisos mínimos, `dispositivos`, `calibraciones`, diagnóstico, vistas, respaldos | ✅ Hecho (probado con MariaDB real) |
 | R24 | Usuario | Banco de preguntas para el encargado del ESP32 | Doc compartible (8 secciones, preguntas ★ que bloquean) | ✅ Hecho |
-| R25 | Usuario | Generar todo como si el ESP32 estuviera conectado | Simulador de terminal → API → MariaDB (y ThingSpeak opcional) | ✅ Hecho |
-| R26 | Usuario | Página oculta tipo easter egg con sensores simulados lo más realista posible | `laboratorio.js` + `esp32-virtual.js` (curvas de módulos, ADC, firmware, fallas) | ✅ Hecho |
-| R27 | Usuario | Página funcionando sin hardware | Fuente "simulador" en toda la página, con aviso de simulación | ✅ Hecho (también en GitHub Pages) |
+| R25 | Usuario | Generar todo como si el ESP32 estuviera conectado | Simulador de terminal → API → MariaDB (y ThingSpeak opcional) | 🗑️ Retirado (R36) |
+| R26 | Usuario | Página oculta tipo easter egg con sensores simulados lo más realista posible | `laboratorio.js` + `esp32-virtual.js` (curvas de módulos, ADC, firmware, fallas) | 🗑️ Retirado (R36) |
+| R27 | Usuario | Página funcionando sin hardware | Fuente "simulador" en toda la página, con aviso de simulación | 🗑️ Retirado (R36) |
 | R28 | Usuario | Qué API keys se necesitan | Tabla de llaves en handoff y respuesta | ✅ Hecho |
 | R29 | Usuario | Resolver error 1045 de root al preparar MariaDB en Fedora | `lib-mariadb.sh`, FEDORA.md (contraseñas, SHOW TABLES, recuperación) | ✅ Hecho (reproducido y probado) |
 | R30 | Usuario | Conectar ThingSpeak con MariaDB | Puente `puente-thingspeak.js` + migración 003 + perfil `thingspeak`; FEDORA.md Paso 11 | ✅ Hecho (probado con ThingSpeak falso) |
@@ -49,3 +48,5 @@
 | R34 | Usuario | Paso a paso para conectar el ESP32 a la IP de la laptop o a la red del Tec | `esp32/README.md`, `prueba_red.ino`, `conectarWiFi()` con WPA2-Enterprise, sección en el documento | ⚠️ Escrito, sin compilar ni probar en hardware |
 | R20 | Spec §6 Fase 6 | Analizar datos y tendencias | Vista `resumen_diario`, consultas SQL, Adminer, exportar CSV | ✅ Hecho |
 | R35 | Usuario | Saber si laptop y ESP32 están enlazados en la red Tec-IoT | Respuesta paso a paso con `probar-conexion.sh`, `prueba_red.ino` y `ping` | ⏳ Falta que el equipo lo corra |
+| R36 | Usuario | Eliminar el ESP32 simulado y usar solo el real | Borrado de laboratorio/simulador, migración 004, API rechaza simulados, guías actualizadas | ✅ Hecho (probado con MariaDB real y Chrome) |
+| R37 | Usuario | El ESP32 real no aparece en la terminal | Diagnóstico pendiente: falta la salida del monitor serie | ⏳ Esperando datos |

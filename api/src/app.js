@@ -1,7 +1,7 @@
 // API del monitoreo de calidad del agua.
 //   POST /api/lecturas      el ESP32 guarda una lectura (requiere header X-API-Key)
 //   GET  /api/lecturas      la página lee las últimas N (?limit=100&dispositivo=esp32-1)
-//   GET  /api/dispositivos  estado de cada ESP32 (real o simulado)
+//   GET  /api/dispositivos  estado de cada ESP32
 //   GET  /api/salud         estado de la API y de la conexión a MariaDB
 
 const crypto = require("node:crypto");

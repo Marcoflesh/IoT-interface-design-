@@ -8,8 +8,8 @@
 
   var S = window.Semaforo;
   var CLAVE_LS = "calidadAgua.ajustes.v1";
-  var RUTAS = ["inicio", "historial", "alertas", "ajustes", "laboratorio"];
-  var TITULOS = { inicio: "Estado del agua", historial: "Historial", alertas: "Alertas", ajustes: "Ajustes", laboratorio: "Laboratorio" };
+  var RUTAS = ["inicio", "historial", "alertas", "ajustes"];
+  var TITULOS = { inicio: "Estado del agua", historial: "Historial", alertas: "Alertas", ajustes: "Ajustes" };
   var reducirMovimiento = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   var COLORES = {
@@ -57,6 +57,8 @@
 
   // ---------- Configuración (defecto + localStorage) ----------
 
+  var FUENTES = ["thingspeak", "api", "demo"];
+
   function configDefecto() {
     var c = copiar(window.APP_CONFIG);
     c.umbrales = copiar(S.UMBRALES_DEFECTO);
@@ -68,7 +70,9 @@
     try {
       var guardada = JSON.parse(localStorage.getItem(CLAVE_LS) || "null");
       if (guardada) {
-        c.fuente = guardada.fuente || c.fuente;
+        // "simulador" ya no existe: quien lo tenía guardado vuelve a la fuente por defecto.
+        if (FUENTES.indexOf(guardada.fuente) >= 0) c.fuente = guardada.fuente;
+        if (guardada.api && /^esp32-sim/.test(guardada.api.dispositivo || "")) guardada.api.dispositivo = "";
         c.thingspeak = Object.assign(c.thingspeak, guardada.thingspeak || {});
         c.api = Object.assign(c.api || {}, guardada.api || {});
         c.intervaloSeg = guardada.intervaloSeg || c.intervaloSeg;
@@ -107,8 +111,6 @@
     temporizador: null
   };
   var demo = Datos.crearDemo(estado.config.intervaloSeg);
-  if (estado.config.fuente === "simulador" && !Laboratorio.desbloqueado()) estado.config.fuente = "demo";
-  window.APP_FUENTE_ACTUAL = function () { return estado.config.fuente; };
 
   function clasificar(l) {
     return S.clasificar(l, estado.config.umbrales, { criticoRojo: estado.config.criticoRojo });
@@ -135,7 +137,6 @@
     var c = estado.config;
     var promesa = c.fuente === "thingspeak" ? Datos.leerThingSpeak(c)
       : c.fuente === "api" ? Datos.leerAPI(c)
-      : c.fuente === "simulador" ? Laboratorio.leer(c.resultados)
       : demo.leer(c.resultados);
 
     promesa
@@ -181,10 +182,6 @@
     });
     document.title = TITULOS[estado.ruta] + " · Calidad del Agua";
     if (estado.ruta === "ajustes") llenarFormulario(estado.config);
-    if (estado.ruta === "laboratorio") {
-      if (!Laboratorio.desbloqueado()) Laboratorio.desbloquear("url");
-      Laboratorio.render();
-    }
     render();
     if (enfocar) $("#contenido").focus({ preventScroll: false });
   }
@@ -203,9 +200,7 @@
     $("#nav-fuente").textContent = c.fuente === "thingspeak"
       ? "Fuente: ThingSpeak · canal " + (c.thingspeak.channelId || "sin configurar")
       : c.fuente === "api" ? "Fuente: MariaDB (API local)" + (c.api && c.api.dispositivo ? " · " + c.api.dispositivo : "")
-      : c.fuente === "simulador" ? "Fuente: ESP32 virtual (simulación)"
       : "Fuente: demo (datos simulados)";
-    $("#aviso-sim").hidden = c.fuente !== "simulador";
   }
 
   // ---------- 1. Inicio ----------
@@ -610,21 +605,6 @@
   // ---------- Eventos ----------
 
   function conectarEventos() {
-    // El laboratorio pide usar (o dejar) la simulación como fuente de toda la página.
-    document.addEventListener("lab:fuente", function (ev) {
-      var c = estado.config;
-      if (ev.detail.usar) c.fuente = "simulador";
-      else if (c.fuente === "simulador") c.fuente = "demo";
-      guardarConfig(c);
-      actualizar();
-    });
-    var pendiente = false;
-    Laboratorio.alNuevaLectura(function () {
-      if (estado.config.fuente !== "simulador" || pendiente) return;
-      pendiente = true;
-      setTimeout(function () { pendiente = false; actualizar(); }, 400);
-    });
-
     window.addEventListener("hashchange", function () { mostrarRuta(true); });
     document.addEventListener("visibilitychange", function () { if (!document.hidden) actualizar(); });
 
@@ -670,7 +650,6 @@
           : c.fuente === "api" ? "No se pudo conectar con la API. ¿Está corriendo docker compose?"
           : "No se pudo conectar. Revisa tu internet y el Channel ID.", "error");
       };
-      if (c.fuente === "simulador") { mensajeAjustes("El ESP32 virtual corre en esta pestaña: no necesita conexión.", "ok"); return; }
       mensajeAjustes("Probando conexión…");
       if (c.fuente === "api") {
         Datos.saludAPI(c).then(function (j) {

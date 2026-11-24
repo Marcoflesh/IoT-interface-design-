@@ -64,10 +64,14 @@ function validarLectura(cuerpo) {
   }
   lectura.firmware = cuerpo.firmware || null;
 
-  if (cuerpo.simulado !== undefined && typeof cuerpo.simulado !== "boolean") {
-    return { error: "simulado debe ser true o false." };
+  // El ESP32 virtual se retiró (migración 004): solo se aceptan lecturas del ESP32 real.
+  if (cuerpo.simulado !== undefined && cuerpo.simulado !== false) {
+    return { error: "Solo se aceptan lecturas del ESP32 real: el simulador se retiró." };
   }
-  lectura.simulado = cuerpo.simulado === true;
+  if (/^esp32-sim/.test(dispositivo)) {
+    return { error: "Solo se aceptan lecturas del ESP32 real: el simulador se retiró." };
+  }
+  lectura.simulado = false;
 
   return { lectura };
 }

@@ -76,31 +76,6 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # ESP32 virtual (opcional): docker compose --profile simulador up -d
-  # Manda lecturas simuladas a la API como si fuera el ESP32 real (dispositivo esp32-sim).
-  simulador:
-    image: node:22-alpine
-    container_name: calidad-agua-simulador
-    profiles: ["simulador"]
-    working_dir: /app
-    command: ["node", "simulador/simular-esp32.js"]
-    environment:
-      API_URL: http://web/api/lecturas
-      ESP32_API_KEY: ${ESP32_API_KEY:?Falta ESP32_API_KEY en .env}
-      THINGSPEAK_WRITE_KEY: ${THINGSPEAK_WRITE_KEY:-}
-      SIM_MUESTRA: ${SIM_MUESTRA:-llave}
-      SIM_GUION: ${SIM_GUION:-1}
-      SIM_GUION_MIN: ${SIM_GUION_MIN:-5}
-      SIM_COMANDOS: "1"
-    volumes:
-      - ./simulador:/app/simulador:ro
-      - ./docs/js:/app/docs/js:ro
-    stdin_open: true          # docker attach calidad-agua-simulador → escribir comandos
-    tty: true
-    depends_on:
-      - web
-    restart: unless-stopped
-
   adminer:
     image: adminer:4
     container_name: calidad-agua-adminer

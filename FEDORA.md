@@ -100,13 +100,13 @@ El script:
 | Tabla o vista | Qué guarda |
 |---|---|
 | `lecturas` | Cada envío: fecha (UTC), dispositivo, pH, turbidez, conductividad, temperatura, RSSI y voltajes crudos de cada sensor |
-| `dispositivos` | Cada ESP32: `esp32-1` (el real), `esp32-sim` (el simulador), si es simulado, firmware, última conexión e IP |
+| `dispositivos` | Cada ESP32: `esp32-1` (directo) y `esp32-1-ts` (copiado por el puente), firmware, última conexión e IP |
 | `calibraciones` | Historial de calibraciones por sensor (puntos, pendiente, ordenada, notas) |
 | `schema_migraciones` | Qué migraciones ya se aplicaron |
 | `resumen_diario` (vista) | Promedios, mínimos y máximos por dispositivo y día |
 | `estado_dispositivos` (vista) | Cuántos segundos lleva cada ESP32 sin mandar datos |
 
-**Por qué así:** si alguien obtiene la contraseña de la API, no puede borrar datos ni tablas. Los datos simulados se separan de los reales por `dispositivo`. Las migraciones numeradas permiten cambiar la base sin perder nada.
+**Por qué así:** si alguien obtiene la contraseña de la API, no puede borrar datos ni tablas. Cada origen de datos (directo o copiado por el puente) queda separado por `dispositivo`. Las migraciones numeradas permiten cambiar la base sin perder nada.
 
 Puedes correrlo cuantas veces quieras; si cambias la contraseña en `.env`, vuelve a correrlo y la actualiza.
 
@@ -217,39 +217,26 @@ Prueba también desde **tu celular conectado a la misma WiFi**: abre `http://IP-
    ```
 7. En DBeaver presiona **F5** sobre `lecturas`: ahí están las filas del ESP32 (`dispositivo = esp32-1`). En la página, el semáforo se actualiza solo.
 
-## Paso 10 · Mientras llega el hardware: ESP32 virtual
+## Paso 10 · Quitar el ESP32 virtual (una sola vez)
 
-Hay dos formas de simular el ESP32. Las dos usan el mismo modelo físico: curvas reales de los módulos, divisor de la PCB, ruido y no linealidad del ADC del ESP32, calibración y compensación por temperatura.
-
-**A. Simulador de terminal: manda datos reales a tu API y a MariaDB**
+El simulador se retiró: la página, la API y la base solo trabajan con el ESP32 real. Si alguna vez lo usaste, limpia lo que dejó:
 
 ```bash
-sudo dnf install nodejs                               # si no tienes Node 20+
-node simulador/simular-esp32.js                       # usa ESP32_API_KEY del .env
+git pull
+bash scripts/fedora/respaldar.sh                      # respaldo antes de borrar
+docker rm -f calidad-agua-simulador 2>/dev/null       # apaga el contenedor viejo si existe
+bash scripts/fedora/preparar-mariadb.sh               # aplica la migración 004: borra esp32-sim y esp32-sim-ts
+docker compose -f docker-compose.fedora.yml up -d --build
+bash scripts/fedora/ver-mariadb.sh                    # ya no debe aparecer ningún esp32-sim
 ```
 
-O dentro de Docker, para que corra solo:
+Revisa también:
 
-```bash
-docker compose -f docker-compose.fedora.yml --profile simulador up -d
-docker attach calidad-agua-simulador                  # ver el monitor serie y escribir comandos (salir: Ctrl+P, Ctrl+Q)
-```
+- En el `.env`, `PUENTE_DISPOSITIVO=esp32-1-ts`. Con `esp32-sim-ts` el puente ya no arranca.
+- Si el simulador publicó en tu canal de ThingSpeak, esas lecturas siguen ahí y GitHub Pages las muestra como reales. Bórralas en ThingSpeak: **Channel Settings → Clear Channel** (borra todo el canal, no se puede deshacer).
+- Si en algún navegador marcaste "Usar esta simulación en toda la página", la página vuelve sola a ThingSpeak.
 
-Comandos mientras corre: `muestras`, `muestra tierra`, `falla ph on`, `wifi off`, `calibrar ph`, `fabrica`, `estado`, `ayuda`. Con `SIM_GUION=1` en `.env` cambia de muestra cada 5 min (llave, tierra, vinagre…), ideal para dejarlo corriendo en la demo. Si pones `THINGSPEAK_WRITE_KEY` en `.env`, también publica de verdad en ThingSpeak y la versión de GitHub Pages lo muestra.
-
-Sus lecturas llegan como `dispositivo = esp32-sim`. En la página: Ajustes → MariaDB → Dispositivo `esp32-sim`.
-
-**B. Laboratorio oculto en la página (funciona también en GitHub Pages)**
-
-Para entrar: en cualquier pantalla teclea **↑ ↑ ↓ ↓ ← → ← → B A**, o toca **5 veces la gota** del logo, o abre `http://localhost:8080/#laboratorio`.
-
-Ahí puedes cambiar la muestra del vaso, ver la cadena completa (vaso → sensor → ADC → firmware), provocar fallas, calibrar, acelerar el tiempo y marcar **"Usar esta simulación en toda la página"**: Inicio, Historial y Alertas funcionan con el ESP32 virtual y muestran el aviso **Simulación**. En localhost también puede mandar cada lectura a tu API (pega la `ESP32_API_KEY` en la tarjeta "Enviar también a mi API").
-
-**Borrar los datos simulados** antes de medir con el ESP32 real:
-
-```bash
-mariadb -u root -p calidad_agua -e "DELETE FROM lecturas WHERE dispositivo = 'esp32-sim'"
-```
+Si después de esto la base queda vacía, es que el ESP32 real todavía no ha mandado nada: revisa [esp32/README.md](esp32/README.md) y corre `prueba_red.ino`.
 
 ## Paso 11 · Conectar ThingSpeak con MariaDB (puente)
 
@@ -277,21 +264,19 @@ El puente no duplica (usa el `entry_id` de ThingSpeak), conserva la hora origina
 7. Pestaña **API Keys**: ahí están la **Write API Key** (para escribir) y la **Read API Key** (para leer).
 8. Pestaña **Sharing**: elige **Share channel view with everyone** (canal público). Así la página de GitHub no necesita Read API Key.
 
-> **Recomendación:** crea **dos canales** (el plan gratis permite 4): `Calidad del agua · pruebas` para el simulador y `Calidad del agua` para el ESP32 real. Así nunca mezclas datos simulados con reales ni tienes que borrar nada después.
-
 ### 11.2 · Llenar el `.env`
 
 ```ini
 THINGSPEAK_CHANNEL_ID=2741234
 THINGSPEAK_READ_KEY=
 THINGSPEAK_WRITE_KEY=XXXXXXXXXXXXXXXX
-PUENTE_DISPOSITIVO=esp32-sim-ts
+PUENTE_DISPOSITIVO=esp32-1-ts
 PUENTE_INTERVALO=60
 ```
 
 - `THINGSPEAK_READ_KEY` vacía si el canal es público.
-- `THINGSPEAK_WRITE_KEY`: solo la usan el simulador y la prueba de escritura. La del ESP32 real va en `secretos.h`.
-- `PUENTE_DISPOSITIVO=esp32-sim-ts` mientras uses el canal de pruebas; con el canal real, `esp32-1-ts`.
+- `THINGSPEAK_WRITE_KEY`: solo la usa la prueba de escritura. La del ESP32 va en `secretos.h`.
+- `PUENTE_DISPOSITIVO=esp32-1-ts`: así se distinguen las lecturas copiadas por el puente de las que el ESP32 manda directo (`esp32-1`).
 
 ### 11.3 · Probar el canal desde la terminal
 
@@ -336,9 +321,7 @@ git push
 
 En 1 o 2 minutos https://marcoflesh.github.io/IoT-interface-design-/ arranca leyendo tu canal. Si ya habías guardado otra fuente en **Ajustes** de ese navegador, esa tiene prioridad: elige **ThingSpeak** en Ajustes y **Guardar**. Para volver al demo: `bash scripts/configurar-pagina.sh --demo`.
 
-### 11.6 · Probarlo todo sin el ESP32
-
- con la Write API Key del canal de pruebas en `THINGSPEAK_WRITE_KEY`, levanta el simulador: `docker compose -f docker-compose.fedora.yml --profile simulador up -d`. El ESP32 virtual publica en ThingSpeak y el puente lo copia a MariaDB: es la cadena completa sin hardware.
+### 11.6 · Los dos caminos a la vez
 
 > Si usas la forma A y el puente a la vez, cada lectura queda dos veces: una como `esp32-1` (directa) y otra como `esp32-1-ts` (copiada). No se mezclan, pero normalmente basta con una de las dos.
 
@@ -360,7 +343,6 @@ Guarda los 14 más recientes. Haz uno antes de cada demo y antes de borrar datos
 | Ver qué llega del ESP32 | `docker logs -f calidad-agua-api` |
 | Revisar todo | `bash scripts/fedora/probar-conexion.sh` |
 | No abre localhost:8080 | `bash scripts/fedora/diagnosticar.sh` |
-| Simular el ESP32 | `docker compose -f docker-compose.fedora.yml --profile simulador up -d` |
 | Copiar ThingSpeak a MariaDB | `docker compose -f docker-compose.fedora.yml --profile thingspeak up -d` |
 | Respaldar la base | `bash scripts/fedora/respaldar.sh` |
 | Ver los datos llegar (sin DBeaver) | `bash scripts/fedora/ver-mariadb.sh --seguir` |

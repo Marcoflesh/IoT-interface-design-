@@ -36,32 +36,6 @@ services:
       - api
     restart: unless-stopped
 
-  # ESP32 virtual (opcional):
-  #   docker compose -f docker-compose.fedora.yml --profile simulador up -d
-  simulador:
-    image: node:22-alpine
-    container_name: calidad-agua-simulador
-    profiles: ["simulador"]
-    network_mode: host
-    working_dir: /app
-    command: ["node", "simulador/simular-esp32.js"]
-    environment:
-      API_URL: http://127.0.0.1:8080/api/lecturas
-      ESP32_API_KEY: ${ESP32_API_KEY:?Falta ESP32_API_KEY en .env}
-      THINGSPEAK_WRITE_KEY: ${THINGSPEAK_WRITE_KEY:-}
-      SIM_MUESTRA: ${SIM_MUESTRA:-llave}
-      SIM_GUION: ${SIM_GUION:-1}
-      SIM_GUION_MIN: ${SIM_GUION_MIN:-5}
-      SIM_COMANDOS: "1"
-    volumes:
-      - ./simulador:/app/simulador:ro,z
-      - ./docs/js:/app/docs/js:ro,z
-    stdin_open: true
-    tty: true
-    depends_on:
-      - web
-    restart: unless-stopped
-
   # Puente ThingSpeak → MariaDB (opcional):
   #   docker compose -f docker-compose.fedora.yml --profile thingspeak up -d
   puente:

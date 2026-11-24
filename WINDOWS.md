@@ -44,7 +44,7 @@ docker compose version
 docker run --rm hello-world
 ```
 
-**Opcionales:** DBeaver Community (dbeaver.io) para ver la base, Arduino IDE (arduino.cc) para el ESP32 y Node.js LTS (nodejs.org) si quieres correr el simulador sin Docker.
+**Opcionales:** DBeaver Community (dbeaver.io) para ver la base, Arduino IDE (arduino.cc) para el ESP32.
 
 > Si Docker Desktop dice que la virtualización está desactivada, actívala en el BIOS de tu PC (Intel VT-x o AMD-V / SVM).
 
@@ -167,26 +167,25 @@ const char* API_KEY       = "LA_MISMA_ESP32_API_KEY_DEL_.env";
 4. Copia las funciones de `esp32\envio_datos.ino` a su firmware, quita Ubidots y llama a `enviarThingSpeak()` y `enviarAPI()` cada 20 s.
 5. **Subir** y abre el **Monitor Serie** (115200). Cada 20 s debe salir `ThingSpeak entry_id: 57 · API HTTP: 201`.
 
-## Paso 9 · Mientras llega el hardware: ESP32 virtual
+## Paso 9 · Quitar el ESP32 virtual (una sola vez)
+
+El simulador se retiró: la página, la API y la base solo trabajan con el ESP32 real. Si alguna vez lo usaste:
 
 ```powershell
-docker compose --profile simulador up -d
-docker attach calidad-agua-simulador
+git pull
+powershell -ExecutionPolicy Bypass -File scripts\windows\respaldar.ps1
+docker rm -f calidad-agua-simulador
+docker compose up -d --build
+docker logs calidad-agua-api
 ```
 
-Ves el monitor serie del ESP32 virtual y puedes escribir comandos: `muestras`, `muestra tierra`, `falla ph on`, `wifi off`, `calibrar ph`, `estado`, `ayuda`. Para salir sin apagarlo: **Ctrl+P y luego Ctrl+Q**. Sus lecturas llegan como `dispositivo = esp32-sim`.
+Al arrancar, la API aplica la migración 004 (en el log sale `Migración aplicada: 004_retirar_simulador.sql`) y borra todo lo de `esp32-sim` y `esp32-sim-ts`. El `docker rm` puede decir que el contenedor no existe; no pasa nada.
 
-También está el **laboratorio oculto** de la página: en http://localhost:8080 teclea **↑ ↑ ↓ ↓ ← → ← → B A** o toca 5 veces la gota del logo.
-
-Antes de medir con el ESP32 real, borra lo simulado:
-
-```powershell
-docker exec -it calidad-agua-db mariadb -u root -p calidad_agua -e "DELETE FROM lecturas WHERE dispositivo = 'esp32-sim'"
-```
+Si el simulador publicó en tu canal de ThingSpeak, esas lecturas siguen ahí: bórralas en **Channel Settings → Clear Channel** (borra todo el canal, no se puede deshacer).
 
 ## Paso 10 · ThingSpeak y el puente ThingSpeak → MariaDB
 
-**10.1 Crear el canal.** En **thingspeak.mathworks.com** entra con tu cuenta de MathWorks → **Channels → My Channels → New Channel** → Name `Calidad del agua · pruebas` → marca Field 1 a 4 con los nombres `pH`, `Turbidez`, `Conductividad`, `Temperatura` (en ese orden) → **Save Channel**. El **Channel ID** está arriba; las llaves en **API Keys**. En **Sharing** elige **Share channel view with everyone**. Conviene un segundo canal `Calidad del agua` solo para el ESP32 real.
+**10.1 Crear el canal.** En **thingspeak.mathworks.com** entra con tu cuenta de MathWorks → **Channels → My Channels → New Channel** → Name `Calidad del agua` → marca Field 1 a 4 con los nombres `pH`, `Turbidez`, `Conductividad`, `Temperatura` (en ese orden) → **Save Channel**. El **Channel ID** está arriba; las llaves en **API Keys**. En **Sharing** elige **Share channel view with everyone**.
 
 **10.2 En el `.env`:**
 
@@ -194,7 +193,7 @@ docker exec -it calidad-agua-db mariadb -u root -p calidad_agua -e "DELETE FROM 
 THINGSPEAK_CHANNEL_ID=2741234
 THINGSPEAK_READ_KEY=
 THINGSPEAK_WRITE_KEY=XXXXXXXXXXXXXXXX
-PUENTE_DISPOSITIVO=esp32-sim-ts
+PUENTE_DISPOSITIVO=esp32-1-ts
 PUENTE_INTERVALO=60
 ```
 
@@ -207,11 +206,11 @@ powershell -ExecutionPolicy Bypass -File scripts\windows\probar-thingspeak.ps1 -
 **10.4 Encender el puente** (copia cada minuto las lecturas nuevas del canal a MariaDB, sin duplicar y con su hora original):
 
 ```powershell
-docker compose --profile thingspeak --profile simulador up -d --build
+docker compose --profile thingspeak up -d --build
 docker logs -f calidad-agua-puente
 ```
 
-Debe decir `N lectura(s) copiadas`. Con el simulador y la Write Key del canal de pruebas, la cadena completa funciona sin hardware: ESP32 virtual → ThingSpeak → puente → MariaDB.
+Debe decir `N lectura(s) copiadas` en cuanto el ESP32 publique en el canal.
 
 **10.5 La página de GitHub con tu canal:**
 
@@ -223,8 +222,6 @@ git push
 ```
 
 En 1 o 2 minutos https://marcoflesh.github.io/IoT-interface-design-/ lee tu canal. Para volver al demo: `configurar-pagina.ps1 -Demo`.
-
-**Cuando llegue el ESP32 real:** cambia `THINGSPEAK_CHANNEL_ID` al canal real y `PUENTE_DISPOSITIVO=esp32-1-ts`, apaga el simulador (`docker compose stop simulador`), corre `configurar-pagina.ps1` y haz push, y recrea el puente: `docker compose --profile thingspeak up -d --force-recreate puente`.
 
 ## Respaldos
 
@@ -240,7 +237,7 @@ Guarda los 14 más recientes en `respaldos\`. Haz uno antes de cada demo.
 | Para | Comando |
 |---|---|
 | Encender todo | Abre Docker Desktop y `docker compose up -d` |
-| Encender con puente y simulador | `docker compose --profile thingspeak --profile simulador up -d` |
+| Encender con puente | `docker compose --profile thingspeak up -d` |
 | Apagar (los datos se quedan) | `docker compose down` |
 | Ver logs de la API | `docker logs -f calidad-agua-api` |
 | Revisar todo | `powershell -ExecutionPolicy Bypass -File scripts\windows\probar-conexion.ps1` |

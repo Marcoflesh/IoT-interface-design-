@@ -22,12 +22,19 @@ test("acepta null en un sensor que falló", () => {
   assert.strictEqual(r.lectura.temperatura, null);
 });
 
-test("acepta diagnóstico: rssi, voltajes crudos, firmware, simulado", () => {
-  const r = validarLectura({ ph: 7, rssi: -61.4, ph_v: 2.51, turbidez_v: 4.18, conductividad_v: 0.62, firmware: "v1.2.0", simulado: true });
+test("acepta diagnóstico: rssi, voltajes crudos y firmware", () => {
+  const r = validarLectura({ ph: 7, rssi: -61.4, ph_v: 2.51, turbidez_v: 4.18, conductividad_v: 0.62, firmware: "v1.2.0" });
   assert.ifError(r.error);
   assert.strictEqual(r.lectura.rssi, -61);
   assert.strictEqual(r.lectura.firmware, "v1.2.0");
-  assert.strictEqual(r.lectura.simulado, true);
+  assert.strictEqual(r.lectura.simulado, false);
+});
+
+test("rechaza lecturas del simulador retirado", () => {
+  assert.ok(validarLectura({ ph: 7, simulado: true }).error);
+  assert.ok(validarLectura({ ph: 7, dispositivo: "esp32-sim" }).error);
+  assert.ok(validarLectura({ ph: 7, dispositivo: "esp32-sim-ts" }).error);
+  assert.ifError(validarLectura({ ph: 7, simulado: false }).error);
 });
 
 test("rechaza texto, valores imposibles y cuerpos vacíos", () => {
@@ -79,7 +86,7 @@ conDB("integración con MariaDB: migraciones, POST, GET, dispositivos y salud", 
   await migrar(pool, { log: () => {} });
   assert.deepStrictEqual(await migrar(pool, { log: () => {} }), [], "segunda vez no hay pendientes");
   await pool.query("DELETE FROM lecturas");
-  await pool.query("DELETE FROM dispositivos WHERE id NOT IN ('esp32-1','esp32-sim')");
+  await pool.query("DELETE FROM dispositivos WHERE id NOT IN ('esp32-1')");
 
   const KEY = "llave-de-prueba-1234567890";
   const servidor = crearApp(pool, KEY).listen(0);
@@ -98,8 +105,8 @@ conDB("integración con MariaDB: migraciones, POST, GET, dispositivos y salud", 
     const r1 = await post({ ph: 7.25, turbidez: 1.4, conductividad: 655.5, temperatura: 22.1, rssi: -58, ph_v: 2.512, firmware: "v1.0.0" });
     assert.strictEqual(r1.status, 201);
     assert.ok((await r1.json()).id > 0);
-    assert.strictEqual((await post({ ph: 8.9, turbidez: null, conductividad: 700, dispositivo: "esp32-sim", simulado: true })).status, 201);
-    assert.strictEqual((await post({ ph: 7.0, dispositivo: "nuevo-01", simulado: true })).status, 201, "dispositivo nuevo se registra solo");
+    assert.strictEqual((await post({ ph: 8.9, turbidez: null, conductividad: 700, dispositivo: "esp32-2" })).status, 201);
+    assert.strictEqual((await post({ ph: 7.0, dispositivo: "nuevo-01" })).status, 201, "dispositivo nuevo se registra solo");
 
     const g = await (await fetch(base + "/api/lecturas?limit=10")).json();
     assert.strictEqual(g.lecturas.length, 3);
@@ -110,8 +117,9 @@ conDB("integración con MariaDB: migraciones, POST, GET, dispositivos y salud", 
     assert.match(g.lecturas[0].fecha, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     assert.ok(Math.abs(new Date(g.lecturas[1].fecha) - Date.now()) < 60000, "la fecha debe estar en UTC");
 
-    const soloSim = await (await fetch(base + "/api/lecturas?dispositivo=esp32-sim")).json();
-    assert.strictEqual(soloSim.lecturas.length, 1);
+    const solo2 = await (await fetch(base + "/api/lecturas?dispositivo=esp32-2")).json();
+    assert.strictEqual(solo2.lecturas.length, 1);
+    assert.strictEqual((await post({ ph: 7, dispositivo: "esp32-sim" })).status, 400, "el simulador ya no entra");
     assert.strictEqual((await fetch(base + "/api/lecturas?dispositivo=a%20b")).status, 400);
 
     const d = await (await fetch(base + "/api/dispositivos")).json();
@@ -119,7 +127,7 @@ conDB("integración con MariaDB: migraciones, POST, GET, dispositivos y salud", 
     const nuevo = d.dispositivos.find((x) => x.id === "nuevo-01");
     assert.strictEqual(real.firmware, "v1.0.0");
     assert.strictEqual(real.lecturas, 1);
-    assert.strictEqual(nuevo.simulado, true);
+    assert.strictEqual(nuevo.simulado, false);
     assert.ok(real.segundos_sin_datos < 60);
 
     const s = await (await fetch(base + "/api/salud")).json();
@@ -130,8 +138,39 @@ conDB("integración con MariaDB: migraciones, POST, GET, dispositivos y salud", 
     assert.strictEqual(v.length, 3);
   } finally {
     await pool.query("DELETE FROM lecturas");
-    await pool.query("DELETE FROM dispositivos WHERE id NOT IN ('esp32-1','esp32-sim')");
+    await pool.query("DELETE FROM dispositivos WHERE id NOT IN ('esp32-1')");
     servidor.close();
+    await pool.end();
+  }
+});
+
+conDB("migración 004: borra el simulador y deja intacto el ESP32 real", async () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const { migrar } = require("../src/migrar");
+  const pool = crearPool(process.env.TEST_DB_USER, process.env.TEST_DB_PASSWORD);
+  try {
+    await migrar(pool, { log: () => {} });
+    await pool.query("DELETE FROM lecturas");
+    await pool.query("DELETE FROM calibraciones");
+    await pool.query("DELETE FROM dispositivos WHERE id <> 'esp32-1'");
+    await pool.query("INSERT INTO dispositivos (id, descripcion, simulado) VALUES ('esp32-sim', 'sim', 1), ('esp32-sim-ts', 'sim ts', 0), ('esp32-1-ts', 'real ts', 0)");
+    await pool.query("INSERT INTO lecturas (fecha, dispositivo, ph) VALUES (NOW(3), 'esp32-1', 7.1), (NOW(3), 'esp32-1-ts', 7.2), (NOW(3), 'esp32-sim', 8.1), (NOW(3), 'esp32-sim', 8.2), (NOW(3), 'esp32-sim-ts', 8.3)");
+    await pool.query("INSERT INTO calibraciones (dispositivo, sensor, fecha) VALUES ('esp32-sim', 'ph', NOW()), ('esp32-1', 'ph', NOW())");
+
+    const sql = fs.readFileSync(path.join(__dirname, "..", "migraciones", "004_retirar_simulador.sql"), "utf8");
+    for (const s of sentencias(sql)) await pool.query(s);
+
+    const lect = await pool.query("SELECT dispositivo, COUNT(*) AS n FROM lecturas GROUP BY dispositivo ORDER BY dispositivo");
+    assert.deepStrictEqual(lect.map((f) => [f.dispositivo, Number(f.n)]), [["esp32-1", 1], ["esp32-1-ts", 1]]);
+    const disp = await pool.query("SELECT id FROM dispositivos ORDER BY id");
+    assert.deepStrictEqual(disp.map((f) => f.id), ["esp32-1", "esp32-1-ts"]);
+    const cal = await pool.query("SELECT dispositivo FROM calibraciones");
+    assert.deepStrictEqual(cal.map((f) => f.dispositivo), ["esp32-1"]);
+  } finally {
+    await pool.query("DELETE FROM calibraciones");
+    await pool.query("DELETE FROM lecturas");
+    await pool.query("DELETE FROM dispositivos WHERE id <> 'esp32-1'");
     await pool.end();
   }
 });
@@ -152,7 +191,7 @@ conUsuarioApp("permisos mínimos: la API funciona sin poder crear tablas", async
     const r = await fetch(base + "/api/lecturas", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-API-Key": "llave-de-prueba-1234567890" },
-      body: JSON.stringify({ ph: 7.1, dispositivo: "esp32-sim", simulado: true })
+      body: JSON.stringify({ ph: 7.1, dispositivo: "esp32-2" })
     });
     assert.strictEqual(r.status, 201);
     servidor.close();

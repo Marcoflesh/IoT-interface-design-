@@ -1,6 +1,6 @@
 # Roadmap · Página web del monitoreo de calidad del agua
 
-**Actualizado:** 2026-11-20 · Complementa el roadmap de hardware de `TC1004B_proyecto_calidad_agua.md`.
+**Actualizado:** 2026-11-24 · Complementa el roadmap de hardware de `TC1004B_proyecto_calidad_agua.md`.
 
 ### Fase 0 · Evaluación ✅
 - [x] Revisar spec e instrucciones de la actividad.
@@ -26,14 +26,17 @@
 - [x] Scripts de preparación y prueba.
 - [x] Guía FEDORA.md (terminal, DBeaver, ESP32).
 
-### Fase 2.7 · Base v2 y ESP32 virtual ✅
+### Fase 2.7 · Base v2 y ESP32 virtual ✅ (el simulador se retiró el 2026-11-24)
 - [x] Migraciones, permisos mínimos, dispositivos, calibraciones, respaldos.
 - [x] Modelo físico de sensores y ADC con pruebas.
 - [x] Simulador de terminal y laboratorio oculto.
 - [x] Banco de preguntas para el encargado del ESP32.
 
 ### Fase 3 · Conexión real ⏳ (equipo)
-- [ ] Recibir respuestas del banco de preguntas y ajustar el modelo del simulador.
+- [x] Retirar el ESP32 virtual (migración 004).
+- [ ] Correr FEDORA.md Paso 10 en la laptop para borrar los datos simulados.
+- [ ] Revisar el monitor serie del ESP32 real y lograr que aparezca en MariaDB.
+- [ ] Recibir respuestas del banco de preguntas.
 - [ ] En Fedora: seguir FEDORA.md Pasos 1 a 11.
 - [ ] En Windows (compañeros): seguir WINDOWS.md y reportar cualquier error de los scripts .ps1 (no se pudieron ejecutar en el entorno de desarrollo).
 - [ ] Decidir camino A (ESP32 → ThingSpeak + API) o B (ESP32 → ThingSpeak + puente).
@@ -42,7 +45,6 @@
 - [ ] Comprar e instalar el TSW-10; mientras tanto, decidir si el semáforo evalúa solo pH y conductividad.
 - [ ] Integrar el nivel del HC-SR04T (field5, columna en `lecturas`, tarjeta en Inicio).
 - [ ] Actualizar el laboratorio a los sensores reales (TSW-10, Keyestudio TDS V1).
-- [ ] Borrar lecturas `esp32-sim` antes de medir con el real (hacer respaldo antes).
 - [ ] Crear `.env` y levantar `docker compose` (Guía, Pasos 1 y 2).
 - [ ] Crear canal ThingSpeak con field1 a field4 (Paso 3).
 - [ ] Cambiar Ubidots por `enviarThingSpeak()` + `enviarAPI()` en el firmware (Paso 4).

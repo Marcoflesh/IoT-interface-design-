@@ -24,8 +24,6 @@ Todo lo local corre con un solo `docker compose up`:
 
 > 🔁 **¿El ESP32 solo puede mandar a ThingSpeak?** El puente (`api/src/puente-thingspeak.js`, perfil `thingspeak`) copia cada minuto las lecturas nuevas del canal a MariaDB sin duplicar. Ver [FEDORA.md, Paso 11](FEDORA.md).
 
-> 🧪 **¿Sin hardware todavía?** Hay un ESP32 virtual con física realista: un simulador de terminal (`simulador/simular-esp32.js`, también como perfil `simulador` de Docker) y una **página oculta** dentro del sitio. Para encontrarla: ↑ ↑ ↓ ↓ ← → ← → B A, o 5 toques en la gota del logo. Detalles en [FEDORA.md, Paso 10](FEDORA.md#paso-10--mientras-llega-el-hardware-esp32-virtual).
-
 La página tiene 4 pantallas: **Inicio** (semáforo y 3 variables), **Historial** (gráficas), **Alertas** (cambios de color) y **Ajustes** (fuente de datos y umbrales). Puede leer de **ThingSpeak**, de **MariaDB** (solo en localhost) o de un **modo demo** para presentar sin hardware.
 
 ---
@@ -207,7 +205,7 @@ Las fechas se guardan en **UTC** (Querétaro = UTC−6). La página las conviert
 ## Pruebas
 
 ```bash
-node --test tests/*.test.js            # semáforo y ESP32 virtual
+node --test tests/*.test.js            # semáforo
 cd api && npm install && npm test      # validación de la API
 ```
 
@@ -222,15 +220,12 @@ IoT-interface-design-/
 │   ├── js/semaforo.js       ← reglas del semáforo
 │   ├── js/datos.js          ← ThingSpeak, API (MariaDB) y modo demo
 │   ├── js/app.js            ← pantallas e interacciones
-│   ├── js/esp32-virtual.js  ← modelo físico del ESP32 y sus sensores
-│   ├── js/laboratorio.js    ← página oculta (easter egg)
 │   └── js/vendor/           ← Chart.js 4.6.1 (local)
 ├── api/                     ← API Node + Express para MariaDB
 │   ├── migraciones/         ← 001 lecturas · 002 dispositivos y diagnóstico · 003 ThingSpeak
 │   ├── src/app.js · server.js · validar.js · migrar.js
 │   ├── src/puente-thingspeak.js ← copia ThingSpeak → MariaDB
 │   └── test/
-├── simulador/simular-esp32.js ← ESP32 virtual en la terminal
 ├── esp32/
 │   ├── envio_datos.ino      ← envío a ThingSpeak y a la API
 │   └── secretos.example.h

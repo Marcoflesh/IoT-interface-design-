@@ -1,6 +1,6 @@
 # Handoff · Web IoT · Monitoreo de calidad del agua (TC1004B)
 
-**Fecha:** 2026-11-21 · **Último prompt:** guía y scripts para Windows con PowerShell
+**Fecha:** 2026-11-24 · **Último prompt:** quitar el ESP32 virtual y dejar solo el real
 
 ## Repositorio
 - https://github.com/Marcoflesh/IoT-interface-design- · rama `main`.
@@ -117,8 +117,18 @@ Ninguna se manda por chat ni se sube a GitHub (`.env` y `secretos.h` están en `
 - **No compilado**: los sketches no se pudieron compilar en el entorno (instalar arduino-cli fue denegado). La firma `WiFi.begin(ssid, WPA2_AUTH_PEAP, identidad, usuario, clave)` es la del core 2.0.3+; confirmar al compilar.
 - Abierto: sin TSW-10 el semáforo queda gris (falta una variable); el nivel no está en página, API ni base; el laboratorio sigue modelando SEN0189 y Gravity TDS, no TSW-10 ni Keyestudio.
 
+## ESP32 virtual retirado (2026-11-24)
+- Pedido de Marco: eliminar el simulador y usar solo el ESP32 real.
+- Borrados: `docs/js/esp32-virtual.js`, `docs/js/laboratorio.js`, `simulador/`, `tests/esp32-virtual.test.js`, la pantalla Laboratorio, el aviso de simulación, el toast, sus estilos, el servicio `simulador` de los dos compose y `SIM_*` del `.env.example`. Las secciones "ESP32 virtual" y "Hallazgos de la simulación" de este handoff quedan como historia.
+- Página: la fuente "simulador" ya no existe; un navegador que la tenía guardada vuelve a la fuente por defecto (ThingSpeak) y limpia el filtro `esp32-sim`. Verificado en Chrome headless.
+- Migración `004_retirar_simulador.sql`: borra lecturas, calibraciones y dispositivos `esp32-sim*` o `simulado = 1`. En Fedora la aplica `preparar-mariadb.sh` (como root); en Docker la API al arrancar. Probada con el migrador (Node) y con el cliente `mariadb`.
+- API: `validar.js` rechaza `simulado: true` y dispositivos `esp32-sim*` (400). El puente no arranca con `PUENTE_DISPOSITIVO=esp32-sim*`.
+- FEDORA.md Paso 10 y WINDOWS.md Paso 9 ahora son "Quitar el ESP32 virtual": respaldo, `docker rm -f calidad-agua-simulador`, migración, Clear Channel en ThingSpeak si el simulador publicó ahí.
+- Pruebas: API 15/15 con MariaDB real (incluida la nueva de la 004), semáforo 8/8, compose válidos.
+- **Abierto:** el ESP32 real no aparece en la terminal de Marco. No se sabe qué firmware tiene; falta su salida del monitor serie (no llegó adjunta).
+
 ## Pendiente del equipo
-- Responder el banco de preguntas y ajustar los supuestos de `esp32-virtual.js` (divisores, fórmulas, pines).
-- FEDORA.md Pasos 1 a 10 con el hardware real; borrar datos `esp32-sim` antes de medir.
+- Responder el banco de preguntas (divisores, fórmulas, pines) para el firmware real.
+- FEDORA.md Paso 10 (quitar el simulador) y luego conectar el ESP32 real con `esp32/README.md`.
 - Activar GitHub Pages.
 - Wireframes y presentación (entregable de la actividad).

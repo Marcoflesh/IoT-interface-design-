@@ -123,6 +123,10 @@ async function principal() {
     console.error("PUENTE_DISPOSITIVO solo lleva letras, números, - o _.");
     process.exit(1);
   }
+  if (/^esp32-sim/.test(cfg.dispositivo)) {
+    console.error("PUENTE_DISPOSITIVO=" + cfg.dispositivo + " era para el simulador, que ya se retiró. Usa esp32-1-ts en el .env.");
+    process.exit(1);
+  }
   const pool = mariadb.createPool({
     host: process.env.DB_HOST || "db",
     port: Number(process.env.DB_PORT || 3306),
