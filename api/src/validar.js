@@ -6,7 +6,8 @@ const LIMITES_FISICOS = {
   ph: [0, 14],
   turbidez: [0, 4000],
   conductividad: [0, 20000],
-  temperatura: [-10, 100]
+  temperatura: [-10, 100],
+  distancia: [0, 600]       // cm, HC-SR04T (sin eco = null, nunca -1)
 };
 
 // Datos de diagnóstico opcionales (no cuentan como lectura de calidad).
@@ -42,7 +43,7 @@ function validarLectura(cuerpo) {
     lectura[campo] = r.valor;
     if (r.valor !== null) alguna = true;
   }
-  if (!alguna) return { error: "Manda al menos una variable (ph, turbidez, conductividad o temperatura)." };
+  if (!alguna) return { error: "Manda al menos una variable (ph, turbidez, conductividad, temperatura o distancia)." };
 
   for (const [campo, rango] of Object.entries(LIMITES_DIAGNOSTICO)) {
     const r = revisarNumero(cuerpo, campo, rango, "posible");

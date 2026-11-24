@@ -30,6 +30,15 @@ test("acepta diagnóstico: rssi, voltajes crudos y firmware", () => {
   assert.strictEqual(r.lectura.simulado, false);
 });
 
+test("acepta la distancia del HC-SR04T y rechaza -1", () => {
+  const r = validarLectura({ temperatura: 22.5, conductividad: 410.2, distancia: 37.4, ph: null, turbidez: null });
+  assert.ifError(r.error);
+  assert.strictEqual(r.lectura.distancia, 37.4);
+  assert.ifError(validarLectura({ distancia: 50 }).error, "solo distancia cuenta como lectura");
+  assert.ok(validarLectura({ temperatura: 22, distancia: -1 }).error, "sin eco se manda null, no -1");
+  assert.strictEqual(validarLectura({ ph: 7 }).lectura.distancia, null);
+});
+
 test("rechaza lecturas del simulador retirado", () => {
   assert.ok(validarLectura({ ph: 7, simulado: true }).error);
   assert.ok(validarLectura({ ph: 7, dispositivo: "esp32-sim" }).error);
@@ -102,7 +111,7 @@ conDB("integración con MariaDB: migraciones, POST, GET, dispositivos y salud", 
     assert.strictEqual((await post({ ph: 20 })).status, 400);
     assert.strictEqual((await post(null, KEY, '{"ph": nan}')).status, 400);
 
-    const r1 = await post({ ph: 7.25, turbidez: 1.4, conductividad: 655.5, temperatura: 22.1, rssi: -58, ph_v: 2.512, firmware: "v1.0.0" });
+    const r1 = await post({ ph: 7.25, turbidez: 1.4, conductividad: 655.5, temperatura: 22.1, distancia: 37.4, rssi: -58, ph_v: 2.512, firmware: "v1.0.0" });
     assert.strictEqual(r1.status, 201);
     assert.ok((await r1.json()).id > 0);
     assert.strictEqual((await post({ ph: 8.9, turbidez: null, conductividad: 700, dispositivo: "esp32-2" })).status, 201);
@@ -113,6 +122,8 @@ conDB("integración con MariaDB: migraciones, POST, GET, dispositivos y salud", 
     assert.strictEqual(g.lecturas[0].ph, 7.25);
     assert.strictEqual(g.lecturas[0].conductividad, 655.5);
     assert.strictEqual(g.lecturas[0].rssi, -58);
+    assert.strictEqual(g.lecturas[0].distancia, 37.4);
+    assert.strictEqual(g.lecturas[1].distancia, null);
     assert.strictEqual(g.lecturas[1].turbidez, null);
     assert.match(g.lecturas[0].fecha, /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
     assert.ok(Math.abs(new Date(g.lecturas[1].fecha) - Date.now()) < 60000, "la fecha debe estar en UTC");

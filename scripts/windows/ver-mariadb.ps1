@@ -18,7 +18,7 @@ FROM estado_dispositivos WHERE lecturas > 0 ORDER BY ultima_conexion DESC;
 '@ },
   @{ titulo = '== Últimas 10 lecturas (hora de México) con el color del semáforo'; sql = @'
 SELECT l.id, DATE_FORMAT(CONVERT_TZ(l.fecha, '+00:00', '-06:00'), '%H:%i:%s') AS hora, l.dispositivo, l.origen,
-       l.ph, l.turbidez AS ntu, l.conductividad AS ec_uScm, l.temperatura AS temp_C,
+       l.ph, l.turbidez AS ntu, l.conductividad AS ec_uScm, l.temperatura AS temp_C, l.distancia AS cm,
        CASE
          WHEN l.ph IS NULL OR l.turbidez IS NULL OR l.conductividad IS NULL THEN 'gris'
          WHEN (l.ph NOT BETWEEN 6.5 AND 8.5) + (l.turbidez > 4) + (l.conductividad NOT BETWEEN 50 AND 1500) = 0 THEN 'verde'

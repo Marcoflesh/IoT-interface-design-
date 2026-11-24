@@ -201,7 +201,7 @@ Prueba también desde **tu celular conectado a la misma WiFi**: abre `http://IP-
    sudo usermod -aG dialout $USER
    ```
 2. Conecta el ESP32 y revisa que aparezca: `ls /dev/ttyUSB* /dev/ttyACM*`.
-3. En la carpeta de su sketch, copia `esp32/secretos.example.h` como `secretos.h` y llénalo:
+3. Abre `esp32/calidad_agua/calidad_agua.ino` en Arduino IDE (instala las librerías **OneWire** y **DallasTemperature**). En esa misma carpeta copia `esp32/secretos.example.h` como `secretos.h` y llénalo:
    ```cpp
    const char* WIFI_SSID     = "TU_RED";          // la misma red que la laptop
    const char* WIFI_PASSWORD = "TU_CLAVE";
@@ -209,11 +209,12 @@ Prueba también desde **tu celular conectado a la misma WiFi**: abre `http://IP-
    const char* API_URL       = "http://IP-DE-TU-LAPTOP:8080/api/lecturas";   // la que dio el Paso 8
    const char* API_KEY       = "EL_MISMO_ESP32_API_KEY_DEL_.env";
    ```
-4. Copia las funciones de `esp32/envio_datos.ino` a su firmware, **quita el código de Ubidots** y llama a las dos funciones cada 20 s (el ejemplo está al final del archivo).
+4. Es el programa del equipo (TDS, DS18B20, HC-SR04T) ya listo para la API: manda la `X-API-Key` y los nombres de campo correctos. Si cambian pines o sensores, hazlo ahí mismo.
 5. Arduino IDE → puerto `/dev/ttyUSB0` (o `ttyACM0`) → **Subir**.
-6. **Monitor Serie** (115200 baudios, o la velocidad de su `Serial.begin`). Debe salir cada 20 s:
+6. **Monitor Serie** (115200 baudios). Cada segundo sale la lectura y cada 20 s:
    ```
-   ThingSpeak entry_id: 57 · API HTTP: 201
+   API -> 201 guardado en MariaDB
+   ThingSpeak -> entrada 57
    ```
 7. En DBeaver presiona **F5** sobre `lecturas`: ahí están las filas del ESP32 (`dispositivo = esp32-1`). En la página, el semáforo se actualiza solo.
 

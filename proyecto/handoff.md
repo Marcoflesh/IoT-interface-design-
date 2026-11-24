@@ -1,6 +1,6 @@
 # Handoff · Web IoT · Monitoreo de calidad del agua (TC1004B)
 
-**Fecha:** 2026-11-24 · **Último prompt:** quitar el ESP32 virtual y dejar solo el real
+**Fecha:** 2026-11-24 · **Último prompt:** revisar el firmware real del ESP32 (no aparecía en MariaDB)
 
 ## Repositorio
 - https://github.com/Marcoflesh/IoT-interface-design- · rama `main`.
@@ -110,7 +110,7 @@ Ninguna se manda por chat ni se sube a GitHub (`.env` y `secretos.h` están en `
 - Sensores confirmados: ESP32-WROOM-32 DevKit 38 pines, PH-4502C (pH), Keyestudio TDS V1 (conductividad), DS18B20 (temperatura), HC-SR04T (nivel), TSW-10 (turbidez, **falta comprarlo**).
 - Nuevo `esp32/README.md`: tabla de hardware, avisos de PCB (ADC1 con WiFi, echo de 5 V), paso a paso ESP32 → laptop, red del Tec y tabla de fallas.
 - Nuevo `esp32/prueba_red/prueba_red.ino`: prueba WiFi, internet, `/api/salud` y un POST (`esp32-prueba-red`), cada 30 s.
-- `envio_datos.ino`: `conectarWiFi()` con red normal o WPA2-Enterprise (PEAP, `WIFI_EMPRESARIAL` + `WIFI_USUARIO` en `secretos.h`).
+- `envio_datos.ino` (reemplazado después por `calidad_agua/calidad_agua.ino`): `conectarWiFi()` con red normal o WPA2-Enterprise (PEAP, `WIFI_EMPRESARIAL` + `WIFI_USUARIO` en `secretos.h`).
 - `.gitignore` cubre `esp32/**/secretos.h`.
 - Red elegida para laptop y ESP32: **Tec-IoT** (2026-11-24). Verificar enlace con `probar-conexion.sh` (IP + API_URL) y `prueba_red.ino` ([3] OK y [4] 201). Si [2] OK pero [3] falla con firewall abierto, la red aísla clientes → ThingSpeak + puente.
 - Documento de contexto (Claude Doc): https://claude.ai/artifact/PWt5AtjHv4iLadoLSZRJDB
@@ -126,6 +126,14 @@ Ninguna se manda por chat ni se sube a GitHub (`.env` y `secretos.h` están en `
 - FEDORA.md Paso 10 y WINDOWS.md Paso 9 ahora son "Quitar el ESP32 virtual": respaldo, `docker rm -f calidad-agua-simulador`, migración, Clear Channel en ThingSpeak si el simulador publicó ahí.
 - Pruebas: API 15/15 con MariaDB real (incluida la nueva de la 004), semáforo 8/8, compose válidos.
 - **Abierto:** el ESP32 real no aparece en la terminal de Marco. No se sabe qué firmware tiene; falta su salida del monitor serie (no llegó adjunta).
+
+## Firmware real del equipo (2026-11-24)
+- Marco pasó el programa que tiene el ESP32: TDS en GPIO36, DS18B20 en GPIO4, HC-SR04T en 16/17, red Tec-IoT, POST cada 10 s a `http://10.25.14.131:8080/api/lecturas`.
+- **Por qué no aparecía:** no mandaba `X-API-Key` (la API responde 401 antes de leer el cuerpo) y usaba campos que la API no conoce (`tds`, `distancia`). Tampoco mandaba a ThingSpeak.
+- Nuevo `esp32/calidad_agua/calidad_agua.ino` (su mismo programa): `secretos.h` (sin la contraseña de Tec-IoT en el repo), `X-API-Key`, `dispositivo`/`firmware`/`rssi`, `conductividad` en µS/cm (su fórmula sin el x0.5; TDS = mitad), `null` si un sensor falla (antes repetía el último valor o mandaba -1), `analogReadMilliVolts`, DS18B20 sin bloquear, envío cada 20 s, imprime la respuesta de la API, ThingSpeak field3/4/5 si hay Write Key. Se borró `envio_datos.ino`.
+- Migración 005: `lecturas.distancia` DECIMAL(6,1) cm. API valida 0 a 600 (cuenta como lectura), GET la devuelve, puente lee field5, `ver-mariadb` la muestra.
+- Pruebas: API 16/16 con MariaDB real. Firmware sin compilar (sin arduino-cli en el entorno).
+- Consecuencia: sin pH ni turbidez el semáforo queda gris. Pendiente decidir si evalúa solo lo disponible.
 
 ## Pendiente del equipo
 - Responder el banco de preguntas (divisores, fórmulas, pines) para el firmware real.

@@ -39,6 +39,8 @@ test("una entrada de ThingSpeak se convierte en fila", () => {
   assert.strictEqual(f.entryId, 7);
   assert.strictEqual(f.fecha, "2026-11-21 18:05:00.000");
   assert.deepStrictEqual([f.lectura.ph, f.lectura.turbidez, f.lectura.conductividad, f.lectura.temperatura], [7.21, 1.4, 655, 22.4]);
+  assert.strictEqual(f.lectura.distancia, null, "sin field5 la distancia queda null");
+  assert.strictEqual(feedALectura(feed(8, 6, { field5: "41.2" }), CAMPOS, "x").lectura.distancia, 41.2);
 });
 
 test("campos vacíos quedan como null y lo imposible se descarta", () => {

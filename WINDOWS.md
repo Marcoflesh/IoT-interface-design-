@@ -164,8 +164,8 @@ const char* API_URL       = "http://TU-IP:8080/api/lecturas";
 const char* API_KEY       = "LA_MISMA_ESP32_API_KEY_DEL_.env";
 ```
 
-4. Copia las funciones de `esp32\envio_datos.ino` a su firmware, quita Ubidots y llama a `enviarThingSpeak()` y `enviarAPI()` cada 20 s.
-5. **Subir** y abre el **Monitor Serie** (115200). Cada 20 s debe salir `ThingSpeak entry_id: 57 · API HTTP: 201`.
+4. Abre `esp32\calidad_agua\calidad_agua.ino` (librerías **OneWire** y **DallasTemperature**) con ese `secretos.h` en la misma carpeta.
+5. **Subir** y abre el **Monitor Serie** (115200). Cada 20 s debe salir `API -> 201 guardado en MariaDB`.
 
 ## Paso 9 · Quitar el ESP32 virtual (una sola vez)
 

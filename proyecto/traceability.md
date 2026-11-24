@@ -25,12 +25,12 @@
 | R10 | Instrucciones | Paleta azul de neutro a oscuro | `styles.css` | ✅ Hecho |
 | R11 | Usuario | Localhost con Docker | `Dockerfile`, `docker-compose.yml` | ⚠️ Hecho, sin probar en este entorno |
 | R12 | Usuario | GitHub Pages | Carpeta `docs/` + `index.html` raíz que redirige | ✅ Publicado y verificado en /docs/ |
-| R13 | Usuario | ThingSpeak | `datos.js`, Ajustes, `esp32/envio_datos.ino` | ⚠️ Hecho, falta prueba con canal real |
+| R13 | Usuario | ThingSpeak | `datos.js`, Ajustes, `esp32/calidad_agua/calidad_agua.ino` | ⚠️ Hecho, falta prueba con canal real |
 | R14 | Usuario | Guía paso a paso | `README.md` | ✅ Hecho |
 | R15 | Actividad §4 | Presentación de 4 slides | Fuera de la página | ⏳ Pendiente |
 | R16 | Actividad §6 | PDF/PPT con wireframes, equipo, nombre | Fuera de la página | ⏳ Pendiente |
 | R17 | Usuario | MariaDB en lugar de Ubidots | `api/`, `docker-compose.yml` (servicio `db`) | ✅ Hecho (probado con MariaDB real) |
-| R18 | Usuario | ESP32 guarda en MariaDB de forma segura | `POST /api/lecturas` + `X-API-Key`, `esp32/envio_datos.ino` | ✅ Hecho (ESP32 simulado) |
+| R18 | Usuario | ESP32 guarda en MariaDB de forma segura | `POST /api/lecturas` + `X-API-Key`, `esp32/calidad_agua/calidad_agua.ino` | ✅ Hecho (ESP32 simulado) |
 | R19 | Usuario | GitHub Pages sigue funcionando | La página publicada lee de ThingSpeak | ✅ Hecho |
 | R21 | Usuario | Usar la MariaDB local de Fedora (terminal y DBeaver) | `docker-compose.fedora.yml`, `scripts/fedora/preparar-mariadb.sh`, FEDORA.md Pasos 4 a 6 | ✅ Hecho (probado sin SELinux/firewalld) |
 | R22 | Usuario | Paso a paso completo para que funcione el ESP32 en Fedora | FEDORA.md Pasos 1 a 9, `probar-conexion.sh` | ✅ Hecho |
@@ -49,4 +49,5 @@
 | R20 | Spec §6 Fase 6 | Analizar datos y tendencias | Vista `resumen_diario`, consultas SQL, Adminer, exportar CSV | ✅ Hecho |
 | R35 | Usuario | Saber si laptop y ESP32 están enlazados en la red Tec-IoT | Respuesta paso a paso con `probar-conexion.sh`, `prueba_red.ino` y `ping` | ⏳ Falta que el equipo lo corra |
 | R36 | Usuario | Eliminar el ESP32 simulado y usar solo el real | Borrado de laboratorio/simulador, migración 004, API rechaza simulados, guías actualizadas | ✅ Hecho (probado con MariaDB real y Chrome) |
-| R37 | Usuario | El ESP32 real no aparece en la terminal | Diagnóstico pendiente: falta la salida del monitor serie | ⏳ Esperando datos |
+| R37 | Usuario | El ESP32 real no aparece en la terminal | Causa: sin `X-API-Key` (401) y campos `tds`/`distancia`. Firmware `calidad_agua.ino` corregido | ⚠️ Corregido, falta subirlo al ESP32 |
+| R38 | Usuario (firmware) | Guardar la distancia del HC-SR04T | Migración 005, `validar.js`, API, puente field5, `ver-mariadb` | ✅ Hecho (probado con MariaDB real) |

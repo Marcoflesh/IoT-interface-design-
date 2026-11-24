@@ -51,7 +51,7 @@ function crearApp(pool, apiKey) {
     if (dispositivo === undefined) return res.status(400).json({ error: "dispositivo inválido." });
     try {
       const filas = await pool.query(
-        "SELECT id, fecha, dispositivo, ph, turbidez, conductividad, temperatura, rssi " +
+        "SELECT id, fecha, dispositivo, ph, turbidez, conductividad, temperatura, distancia, rssi " +
         "FROM lecturas " + (dispositivo ? "WHERE dispositivo = ? " : "") +
         "ORDER BY id DESC LIMIT ?",
         dispositivo ? [dispositivo, limite] : [limite]
@@ -98,9 +98,9 @@ function crearApp(pool, apiKey) {
         [l.dispositivo, l.simulado ? 1 : 0, l.firmware, ip]
       );
       const r = await conexion.query(
-        "INSERT INTO lecturas (fecha, dispositivo, ph, turbidez, conductividad, temperatura, " +
-        "rssi, ph_v, turbidez_v, conductividad_v) VALUES (UTC_TIMESTAMP(3), ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [l.dispositivo, l.ph, l.turbidez, l.conductividad, l.temperatura, l.rssi, l.ph_v, l.turbidez_v, l.conductividad_v]
+        "INSERT INTO lecturas (fecha, dispositivo, ph, turbidez, conductividad, temperatura, distancia, " +
+        "rssi, ph_v, turbidez_v, conductividad_v) VALUES (UTC_TIMESTAMP(3), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [l.dispositivo, l.ph, l.turbidez, l.conductividad, l.temperatura, l.distancia, l.rssi, l.ph_v, l.turbidez_v, l.conductividad_v]
       );
       await conexion.commit();
       res.status(201).json({ id: r.insertId });

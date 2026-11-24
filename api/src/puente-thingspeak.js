@@ -26,7 +26,8 @@ function feedALectura(feed, campos, dispositivo) {
     ph: aNumero(feed[campos.ph]),
     turbidez: aNumero(feed[campos.turbidez]),
     conductividad: aNumero(feed[campos.conductividad]),
-    temperatura: aNumero(feed[campos.temperatura])
+    temperatura: aNumero(feed[campos.temperatura]),
+    distancia: aNumero(feed[campos.distancia])
   });
   if (error) return { error };
   const fecha = new Date(feed.created_at);
@@ -79,9 +80,9 @@ async function sincronizar(pool, cfg, log = () => {}) {
     }
     const l = fila.lectura;
     const r = await pool.query(
-      "INSERT IGNORE INTO lecturas (fecha, dispositivo, origen, ts_canal, ts_entry_id, ph, turbidez, conductividad, temperatura) " +
-      "VALUES (?, ?, 'thingspeak', ?, ?, ?, ?, ?, ?)",
-      [fila.fecha, l.dispositivo, cfg.canal, fila.entryId, l.ph, l.turbidez, l.conductividad, l.temperatura]
+      "INSERT IGNORE INTO lecturas (fecha, dispositivo, origen, ts_canal, ts_entry_id, ph, turbidez, conductividad, temperatura, distancia) " +
+      "VALUES (?, ?, 'thingspeak', ?, ?, ?, ?, ?, ?, ?)",
+      [fila.fecha, l.dispositivo, cfg.canal, fila.entryId, l.ph, l.turbidez, l.conductividad, l.temperatura, l.distancia]
     );
     copiadas += Number(r.affectedRows);
     mayor = Math.max(mayor, fila.entryId);
@@ -106,7 +107,8 @@ function configDesdeEntorno(env = process.env) {
       ph: env.TS_CAMPO_PH || "field1",
       turbidez: env.TS_CAMPO_TURBIDEZ || "field2",
       conductividad: env.TS_CAMPO_CONDUCTIVIDAD || "field3",
-      temperatura: env.TS_CAMPO_TEMPERATURA || "field4"
+      temperatura: env.TS_CAMPO_TEMPERATURA || "field4",
+      distancia: env.TS_CAMPO_DISTANCIA || "field5"
     }
   };
 }

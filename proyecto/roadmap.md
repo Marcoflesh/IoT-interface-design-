@@ -35,7 +35,8 @@
 ### Fase 3 · Conexión real ⏳ (equipo)
 - [x] Retirar el ESP32 virtual (migración 004).
 - [ ] Correr FEDORA.md Paso 10 en la laptop para borrar los datos simulados.
-- [ ] Revisar el monitor serie del ESP32 real y lograr que aparezca en MariaDB.
+- [x] Encontrar por qué el ESP32 real no llegaba (faltaba `X-API-Key`).
+- [ ] Subir `esp32/calidad_agua/calidad_agua.ino` y ver `API -> 201` en el monitor serie.
 - [ ] Recibir respuestas del banco de preguntas.
 - [ ] En Fedora: seguir FEDORA.md Pasos 1 a 11.
 - [ ] En Windows (compañeros): seguir WINDOWS.md y reportar cualquier error de los scripts .ps1 (no se pudieron ejecutar en el entorno de desarrollo).
@@ -43,11 +44,12 @@
 - [x] Elegir la red de la demo: Tec-IoT.
 - [ ] Compilar `esp32/prueba_red/prueba_red.ino` y correrlo en Tec-IoT.
 - [ ] Comprar e instalar el TSW-10; mientras tanto, decidir si el semáforo evalúa solo pH y conductividad.
-- [ ] Integrar el nivel del HC-SR04T (field5, columna en `lecturas`, tarjeta en Inicio).
+- [x] Guardar la distancia del HC-SR04T (migración 005, field5).
+- [ ] Mostrar el nivel en la página (falta la altura del tanque).
 - [ ] Actualizar el laboratorio a los sensores reales (TSW-10, Keyestudio TDS V1).
 - [ ] Crear `.env` y levantar `docker compose` (Guía, Pasos 1 y 2).
 - [ ] Crear canal ThingSpeak con field1 a field4 (Paso 3).
-- [ ] Cambiar Ubidots por `enviarThingSpeak()` + `enviarAPI()` en el firmware (Paso 4).
+- [x] Firmware con API y ThingSpeak: `esp32/calidad_agua/calidad_agua.ino`.
 - [ ] Verificar datos en ThingSpeak y MariaDB, conectar la página (Pasos 5 y 6).
 - [ ] Probar con muestras reales (Paso 7).
 

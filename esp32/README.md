@@ -1,5 +1,23 @@
 # ESP32 · sensores y conexión a la red
 
+## Pines del firmware actual
+
+| Sensor | Pin |
+| --- | --- |
+| TDS (Keyestudio TDS V1) | GPIO36 (VP, ADC1) |
+| DS18B20 | GPIO4 |
+| HC-SR04T trigger | GPIO16 |
+| HC-SR04T echo | GPIO17 (a 3.3 V) |
+| PH-4502C, TSW-10 | Sin conectar todavía: van como `null` |
+
+## Qué manda a la API
+
+```json
+{"dispositivo":"esp32-1","ph":null,"turbidez":null,"conductividad":412.3,"temperatura":22.40,"distancia":37.4,"rssi":-61,"firmware":"v1.1.0"}
+```
+
+Con el header `X-API-Key`. Respuestas: `201` guardado, `400` un dato no tiene sentido (la API dice cuál), `401` falta la llave o no coincide, número negativo = no llegó a la laptop.
+
 ## Hardware
 
 | Pieza | Modelo | Variable | Señal | Estado |
@@ -8,7 +26,7 @@
 | pH | PH-4502C | pH | Analógica | Lo tienen |
 | Conductividad | Keyestudio TDS V1 | µS/cm | Analógica | Lo tienen |
 | Temperatura | DS18B20 | °C | Digital 1-Wire | Lo tienen |
-| Nivel | HC-SR04T | cm | Digital (trigger + echo) | Lo tienen; aún no está en la página ni en la base |
+| Nivel | HC-SR04T | cm (distancia a la superficie) | Digital (trigger + echo) | Lo tienen; se guarda en MariaDB (`distancia`), aún no se muestra en la página |
 | Turbidez | TSW-10 | NTU | Analógica | Falta comprarlo |
 
 Para la PCB:
@@ -23,7 +41,7 @@ Para la PCB:
 | --- | --- |
 | `secretos.example.h` | Plantilla de WiFi y llaves. Cópienla como `secretos.h` (no se sube a GitHub). |
 | `prueba_red/prueba_red.ino` | Diagnóstico de red, sin sensores. Súbanlo primero. |
-| `envio_datos.ino` | Funciones para su firmware: `conectarWiFi()`, `enviarThingSpeak()`, `enviarAPI()`. |
+| `calidad_agua/calidad_agua.ino` | El firmware del equipo listo para la API y ThingSpeak: TDS, DS18B20 y HC-SR04T. |
 
 Los dos sketches no se han compilado todavía en un ESP32 real. Usen el core de ESP32 2.0.3 o más nuevo (Arduino IDE → Gestor de tarjetas → esp32 de Espressif).
 
@@ -44,7 +62,7 @@ Para ThingSpeak basta con internet. Para la laptop, ESP32 y laptop deben estar e
 5. **Prueba con un celular** en la misma red: `http://IP-DE-LA-LAPTOP:8080/api/salud`. Si el celular la ve, el ESP32 también.
 6. **`secretos.h`**: `WIFI_SSID`, `WIFI_PASSWORD`, `API_URL = "http://IP-DE-LA-LAPTOP:8080/api/lecturas"` y `API_KEY` igual a `ESP32_API_KEY` del `.env`.
 7. **Suban `prueba_red/prueba_red.ino`** con una copia de `secretos.h` en `prueba_red/`. Monitor serie a 115200. Deben salir los cuatro pasos OK, el último con `201`. Se repite cada 30 s.
-8. **Suban el firmware real** y revisen las lecturas con `scripts/fedora/ver-mariadb.sh` o `scripts\windows\ver-mariadb.ps1`. La lectura de prueba queda con el dispositivo `esp32-prueba-red`.
+8. **Suban `calidad_agua/calidad_agua.ino`** (con su propio `secretos.h`) y revisen las lecturas con `scripts/fedora/ver-mariadb.sh` o `scripts\windows\ver-mariadb.ps1`. La lectura de prueba queda con el dispositivo `esp32-prueba-red`.
 
 ## Red del Tec
 

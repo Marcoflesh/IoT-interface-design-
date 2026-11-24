@@ -34,7 +34,7 @@ foto() {
 
   echo "== Últimas 10 lecturas (hora de México) con el color del semáforo"
   consulta "SELECT l.id, DATE_FORMAT($FECHA_L, '%H:%i:%s') AS hora, l.dispositivo, l.origen,
-              l.ph, l.turbidez AS ntu, l.conductividad AS 'µS/cm', l.temperatura AS '°C',
+              l.ph, l.turbidez AS ntu, l.conductividad AS 'µS/cm', l.temperatura AS '°C', l.distancia AS cm,
               CASE
                 WHEN l.ph IS NULL OR l.turbidez IS NULL OR l.conductividad IS NULL THEN 'gris'
                 WHEN (l.ph NOT BETWEEN 6.5 AND 8.5) + (l.turbidez > 4) + (l.conductividad NOT BETWEEN 50 AND 1500) = 0 THEN 'verde'
