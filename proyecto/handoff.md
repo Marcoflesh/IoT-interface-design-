@@ -164,6 +164,11 @@ Ninguna se manda por chat ni se sube a GitHub (`.env` y `secretos.h` están en `
 - Ahora dice qué `.env` lee (ruta completa: su repo está en una carpeta anidada), avisa si `THINGSPEAK_READ_KEY` o el Channel ID aparecen más de una vez (gana la última línea, típico con la línea vacía de la plantilla), si no existe la variable, si la llave no tiene 16 letras/números (y qué carácter sobra, p. ej. espacio no separable al copiar), si es igual a la Write Key, y si ThingSpeak la rechaza: canal viejo, Write/User API Key o llave regenerada. También avisa si el canal resulta público.
 - Probado con un ThingSpeak falso en 6 casos. No probado contra ThingSpeak real (sin salida desde el entorno). La versión .ps1 sigue con el mensaje viejo.
 
+## Canal nuevo publicado (2026-11-24)
+- Canal privado nuevo **3596028** en `docs/js/config.js` (commit de Marco `2ab4796`), ya servido por GitHub Pages. En su `.env` la variable estaba como `THINGSPEAK_READ_ID` (ya corregida a `THINGSPEAK_READ_KEY`).
+- DBeaver: `Access denied` era la contraseña vieja guardada; `agua` usa la de `DB_PASSWORD`. Marco configuró autenticación con GitHub (antes fallaba con contraseña) y su repo de trabajo es `~/IoT-interface-design-`.
+- Falta: subir el firmware con la Write Key del canal nuevo y ver `API -> 201` y `ThingSpeak -> entrada N`.
+
 ## Pendiente del equipo
 - Responder el banco de preguntas (divisores, fórmulas, pines) para el firmware real.
 - FEDORA.md Paso 10 (quitar el simulador) y luego conectar el ESP32 real con `esp32/README.md`.
