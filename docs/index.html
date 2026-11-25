@@ -14,35 +14,48 @@
 <body>
   <a class="saltar" href="#contenido">Saltar al contenido</a>
 
+  <svg class="simbolos" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="i-gota" viewBox="0 0 32 32"><path d="M16 3.7C13.5 7.8 6.6 15.2 6.6 20.2a9.4 9.4 0 0 0 18.8 0C25.4 15.2 18.5 7.8 16 3.7Z"/><path d="M7.6 21.3c3-2.9 5.7-3 8.5-.6s5.6 2.4 8.3-.3"/></symbol>
+      <symbol id="i-ph" viewBox="0 0 24 24"><path d="M9 3h6m-5 0v6l-5.3 8.5A2.2 2.2 0 0 0 6.6 21h10.8a2.2 2.2 0 0 0 1.9-3.5L14 9V3M8 15h8"/></symbol>
+      <symbol id="i-turbidez" viewBox="0 0 24 24"><path d="M3 7q3-3 6 0t6 0t6 0M3 12q3-3 6 0t6 0t6 0M3 17q3-3 6 0t6 0t6 0"/></symbol>
+      <symbol id="i-conductividad" viewBox="0 0 24 24"><path d="m14 2-9 12h6l-1 8 9-13h-6z"/></symbol>
+      <symbol id="i-temperatura" viewBox="0 0 24 24"><path d="M9.5 14.1V5a2.5 2.5 0 0 1 5 0v9.1a4.5 4.5 0 1 1-5 0Z"/><path d="M12 9v8"/><circle cx="12" cy="18" r="1"/></symbol>
+      <symbol id="i-historial" viewBox="0 0 24 24"><path d="M4 4v15h16M7 14l4-5 4 3 5-7"/></symbol>
+      <symbol id="i-reloj" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></symbol>
+      <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-9v.3"/></symbol>
+    </defs>
+  </svg>
+
   <div class="app">
-    <!-- Navegación: barra lateral en escritorio, barra inferior en móvil -->
-    <nav class="nav" aria-label="Pantallas">
-      <div class="marca">
-        <svg class="marca__logo" viewBox="0 0 32 32" aria-hidden="true">
-          <path d="M16 3 C16 3 6 14 6 20 a10 10 0 0 0 20 0 C26 14 16 3 16 3 Z" fill="#2E6BB5"/>
-          <path d="M10 21 q3 -3 6 0 t6 0" fill="none" stroke="#E6EEF8" stroke-width="2.2" stroke-linecap="round"/>
-        </svg>
-        <div>
-          <p class="marca__nombre">Calidad del Agua</p>
-          <p class="marca__sub">Monitoreo IoT · ESP32</p>
-        </div>
+    <header class="barra">
+      <div class="barra__interior">
+        <a class="marca" href="#inicio" aria-label="Calidad del Agua, Inicio">
+          <span class="marca__sello"><svg viewBox="0 0 32 32" aria-hidden="true"><use href="#i-gota"/></svg></span>
+          <span><strong class="marca__nombre">Calidad del Agua</strong><span class="marca__sub">Monitoreo IoT · ESP32</span></span>
+        </a>
+        <nav class="nav" aria-label="Pantallas">
+          <ul class="nav__lista">
+            <li><a class="nav__boton" href="#inicio" data-ruta="inicio">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.4"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.4"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.4"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.4"/></svg>
+              <span>Inicio</span></a></li>
+            <li><a class="nav__boton" href="#historial" data-ruta="historial">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-historial"/></svg>
+              <span>Historial</span></a></li>
+            <li><a class="nav__boton" href="#alertas" data-ruta="alertas">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>
+              <span>Alertas</span><span class="nav__badge" id="badge-alertas" hidden></span></a></li>
+            <li><a class="nav__boton" href="#ajustes" data-ruta="ajustes">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+              <span>Ajustes</span></a></li>
+          </ul>
+        </nav>
+        <a class="conexion" id="conexion" data-estado="pendiente" href="#ajustes" aria-labelledby="conexion-texto nav-fuente" title="Ajustes de conexión">
+          <span class="conexion__estado"><span class="indicador" aria-hidden="true"></span><span id="conexion-texto" role="status">Conectando…</span></span>
+          <span class="conexion__fuente" id="nav-fuente">Fuente: ThingSpeak</span>
+        </a>
       </div>
-      <ul class="nav__lista">
-        <li><a class="nav__boton" href="#inicio" data-ruta="inicio">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2.5" width="6" height="19" rx="3"/><circle cx="12" cy="7" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="17" r="1.6"/></svg>
-          <span>Inicio</span></a></li>
-        <li><a class="nav__boton" href="#historial" data-ruta="historial">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18"/><path d="M4 15l5-5 4 3 7-8"/></svg>
-          <span>Historial</span></a></li>
-        <li><a class="nav__boton" href="#alertas" data-ruta="alertas">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>
-          <span>Alertas</span><span class="nav__badge" id="badge-alertas" hidden></span></a></li>
-        <li><a class="nav__boton" href="#ajustes" data-ruta="ajustes">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
-          <span>Ajustes</span></a></li>
-      </ul>
-      <p class="nav__fuente" id="nav-fuente">Fuente: ThingSpeak</p>
-    </nav>
+    </header>
 
     <main id="contenido" class="contenido" tabindex="-1">
 
@@ -51,7 +64,7 @@
         <header class="encabezado">
           <div>
             <h1 id="t-inicio">Estado del agua</h1>
-            <p class="encabezado__sub" id="ultima-lectura">Cargando lecturas…</p>
+            <p class="encabezado__sub lectura"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-reloj"/></svg><span id="ultima-lectura">Cargando lecturas…</span></p>
           </div>
           <button class="boton boton--primario" id="btn-actualizar" type="button">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 4v5h-5"/></svg>
@@ -62,24 +75,36 @@
         <div class="aviso aviso--error" id="aviso-error" role="alert" hidden></div>
 
         <div class="tarjeta semaforo" id="semaforo" data-estado="gris">
-          <div class="semaforo__luces" aria-hidden="true">
-            <span class="luz luz--rojo"></span>
-            <span class="luz luz--amarillo"></span>
-            <span class="luz luz--verde"></span>
-          </div>
-          <div class="semaforo__texto" aria-live="polite">
-            <p class="semaforo__etiqueta" id="semaforo-etiqueta">Sin datos</p>
-            <p class="semaforo__desc" id="semaforo-desc">Esperando la primera lectura del ESP32.</p>
+          <svg class="semaforo__ondas" viewBox="0 0 620 250" preserveAspectRatio="xMidYMid slice" fill="none" aria-hidden="true" focusable="false">
+            <defs><path id="isobata" d="M-100 220C20 222 53 130 132 150S239 244 309 170 375 66 445 79 532 123 584 41 650-9 697-38"/></defs>
+            <g stroke="currentColor" stroke-width="1.25">
+              <use href="#isobata" y="-120"/><use href="#isobata" y="-105"/><use href="#isobata" y="-90"/><use href="#isobata" y="-75"/><use href="#isobata" y="-60"/>
+              <use href="#isobata" y="-45"/><use href="#isobata" y="-30"/><use href="#isobata" y="-15"/><use href="#isobata"/><use href="#isobata" y="15"/>
+              <use href="#isobata" y="30"/><use href="#isobata" y="45"/><use href="#isobata" y="60"/><use href="#isobata" y="75"/><use href="#isobata" y="90"/>
+              <use href="#isobata" y="105"/><use href="#isobata" y="120"/><use href="#isobata" y="135"/>
+            </g>
+          </svg>
+          <div class="semaforo__texto">
+            <div class="semaforo__luces" aria-hidden="true">
+              <span class="luz luz--rojo"></span><span class="luz luz--amarillo"></span><span class="luz luz--verde"></span>
+            </div>
+            <div role="status" aria-atomic="true">
+              <p class="semaforo__etiqueta" id="semaforo-etiqueta">Sin datos</p>
+              <p class="semaforo__desc" id="semaforo-desc">Esperando la primera lectura del ESP32.</p>
+            </div>
             <ul class="semaforo__chips" id="semaforo-chips"></ul>
           </div>
           <div class="semaforo__conteo">
             <p class="conteo__num" id="conteo-num">–</p>
-            <p class="conteo__txt">de 4 parámetros <br>en rango</p>
+            <p class="conteo__txt">de 4 parámetros en rango</p>
+            <div class="conteo__escala" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
           </div>
         </div>
 
-
-        <div class="variables" id="variables"></div>
+        <section aria-labelledby="t-parametros" class="parametros">
+          <h2 id="t-parametros">Parámetros del agua</h2>
+          <div class="variables" id="variables"></div>
+        </section>
 
       </section>
 
@@ -110,7 +135,10 @@
 
         <div class="tarjeta grafica">
           <h2 class="grafica__titulo" id="hist-titulo">pH</h2>
-          <div class="grafica__lienzo"><canvas id="hist-canvas" role="img" aria-label="Gráfica de la variable seleccionada"></canvas></div>
+          <div class="grafica__lienzo">
+            <canvas id="hist-canvas" role="img" aria-label="Gráfica de la variable seleccionada"></canvas>
+            <p class="grafica__vacia" id="hist-vacio" hidden></p>
+          </div>
           <p class="grafica__leyenda"><span class="leyenda-item"><span class="muestra muestra--banda"></span>Rango aceptable</span><span class="leyenda-item"><span class="muestra muestra--punto"></span>Lectura fuera de rango</span></p>
         </div>
 
@@ -167,18 +195,31 @@
               <label class="radio"><input type="radio" name="fuente" value="api"> <span><strong>MariaDB</strong> · lecturas del ESP32 (esp32-1) guardadas en la laptop, solo en localhost con Docker</span></label>
             </div>
             <div class="campos">
-              <label class="campo">Channel ID
+              <label class="campo" data-thingspeak>Channel ID
                 <input type="text" name="channelId" inputmode="numeric" autocomplete="off" spellcheck="false" placeholder="2741234…">
               </label>
-              <label class="campo">Read API Key
-                <input type="text" name="readApiKey" autocomplete="off" spellcheck="false" placeholder="ABCD1234EFGH5678…">
-                <span class="campo__ayuda">Necesaria: el canal es privado.</span>
-              </label>
+              <div class="campo" data-thingspeak>
+                <label for="read-api-key">Read API Key</label>
+                <div class="campo-clave">
+                  <input id="read-api-key" type="password" name="readApiKey" autocomplete="off" spellcheck="false" aria-describedby="ayuda-clave" placeholder="ABCD1234EFGH5678…">
+                  <button type="button" id="btn-clave" aria-controls="read-api-key" aria-label="Mostrar clave de lectura">Mostrar</button>
+                </div>
+                <span class="campo__ayuda" id="ayuda-clave">Necesaria: el canal es privado.</span>
+              </div>
               <label class="campo">Actualizar cada (segundos)
                 <input type="number" name="intervaloSeg" min="15" max="600" step="1">
               </label>
             </div>
-            <p class="aviso aviso--info">Usa solo la <strong>Read</strong> API Key. La Write API Key va únicamente en el ESP32: la página es pública en GitHub Pages.</p>
+            <p class="aviso aviso--info" data-thingspeak>Usa solo la <strong>Read</strong> API Key. La Write API Key va únicamente en el ESP32: la página es pública en GitHub Pages.</p>
+            <div class="prueba">
+              <button type="button" class="boton" id="btn-probar" aria-controls="prueba-estado">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 8V3m6 5V3M6 8h12v3a6 6 0 0 1-12 0zm6 9v4"/></svg>
+                Probar conexión
+              </button>
+              <div class="estado-mensaje" id="prueba-estado" role="status" aria-live="polite" aria-atomic="true">
+                <span class="indicador" aria-hidden="true"></span><span class="estado-mensaje__texto"></span>
+              </div>
+            </div>
           </fieldset>
 
           <fieldset class="tarjeta">
@@ -198,14 +239,16 @@
 
           <div class="ajustes__acciones">
             <button type="submit" class="boton boton--primario">Guardar</button>
-            <button type="button" class="boton" id="btn-probar">Probar conexión</button>
             <button type="button" class="boton boton--fantasma" id="btn-restaurar">Restaurar valores</button>
           </div>
-          <p class="ajustes__estado" id="ajustes-estado" role="status" aria-live="polite"></p>
+          <div class="estado-mensaje" id="ajustes-estado" role="status" aria-live="polite" aria-atomic="true">
+            <span class="indicador" aria-hidden="true"></span><span class="estado-mensaje__texto"></span>
+          </div>
         </form>
       </section>
 
       <footer class="pie">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-info"/></svg>
         <p>Indicadores de calidad, no un análisis de laboratorio certificado. Referencia de umbrales: NOM-127-SSA1-2021 (pH, turbidez y sólidos disueltos); el rango de temperatura es una propuesta del equipo.</p>
       </footer>
     </main>

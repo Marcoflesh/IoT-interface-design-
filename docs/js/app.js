@@ -10,12 +10,11 @@
   var CLAVE_LS = "calidadAgua.ajustes.v1";
   var RUTAS = ["inicio", "historial", "alertas", "ajustes"];
   var TITULOS = { inicio: "Estado del agua", historial: "Historial", alertas: "Alertas", ajustes: "Ajustes" };
-  var reducirMovimiento = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var movimiento = window.matchMedia("(prefers-reduced-motion: reduce)");
 
   var COLORES = {
-    primario: "#1D4F8F", rojo: "#B42318", muted: "#4B5D75", rejilla: "#E3E9F1",
-    banda: "#E3ECF8", bandaLinea: "#7E9CC4", cruz: "#8EA2BC", nav: "#0C2340",
-    verde: "#1E7A46", amarillo: "#F0B429", gris: "#5E6E84"
+    primario: "#0B6666", rojo: "#A23232", muted: "#506966", rejilla: "#E0E9E6",
+    banda: "#DEEFEB", bandaLinea: "#588B81", cruz: "#78A399", nav: "#123E46"
   };
 
   var TEXTOS = {
@@ -31,6 +30,7 @@
   function copiar(o) { return JSON.parse(JSON.stringify(o)); }
   function $(sel) { return document.querySelector(sel); }
   function $$(sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); }
+  function actualizarTexto(el, texto) { if (el.textContent !== texto) el.textContent = texto; }
 
   var formatos = {};
   function fmt(v, dec) {
@@ -103,7 +103,8 @@
     lecturas: [],
     canal: "",
     error: null,
-    cargando: false,
+    solicitud: null,
+    conexion: "pendiente",
     ruta: "inicio",
     variable: "ph",
     rango: 100,
@@ -127,33 +128,46 @@
 
   // ---------- Carga de datos ----------
 
-  function actualizar() {
-    if (estado.cargando) return;
-    estado.cargando = true;
+  function mismaFuente(a, b) {
+    if (a.fuente !== b.fuente) return false;
+    if (a.fuente === "api") return a.api.url === b.api.url;
+    return a.thingspeak.channelId === b.thingspeak.channelId && a.thingspeak.readApiKey === b.thingspeak.readApiKey;
+  }
+
+  function errorDeConexion(e, fuente) {
+    if (!(e instanceof TypeError)) return e.message;
+    return fuente === "api" ? "No se pudo conectar con la API. ¿Está corriendo docker compose?"
+      : "No se pudo conectar con ThingSpeak. Revisa tu internet y el Channel ID.";
+  }
+
+  async function actualizar() {
+    var c = estado.config;
+    if (estado.solicitud === c) return;
+    estado.solicitud = c;
+    // Al sondear en segundo plano, conservar la última conexión confirmada hasta recibir respuesta.
+    if (estado.conexion !== "ok") estado.conexion = "pendiente";
     var btn = $("#btn-actualizar");
     btn.setAttribute("aria-busy", "true");
     btn.disabled = true;
+    renderNav();
+    renderInicio();
 
-    var c = estado.config;
-    var promesa = c.fuente === "api" ? Datos.leerAPI(c) : Datos.leerThingSpeak(c);
-
-    promesa
-      .then(function (r) {
-        estado.lecturas = r.lecturas.filter(function (l) { return !isNaN(l.fecha.getTime()); });
-        estado.canal = r.canal || "";
-        estado.error = null;
-      })
-      .catch(function (e) {
-        estado.error = !(e instanceof TypeError) ? e.message
-          : c.fuente === "api" ? "No se pudo conectar con la API. ¿Está corriendo docker compose?"
-          : "No se pudo conectar con ThingSpeak. Revisa tu internet y el Channel ID.";
-      })
-      .then(function () {
-        estado.cargando = false;
-        btn.removeAttribute("aria-busy");
-        btn.disabled = false;
-        render();
-      });
+    try {
+      var r = await (c.fuente === "api" ? Datos.leerAPI(c) : Datos.leerThingSpeak(c));
+      if (estado.solicitud !== c) return;
+      estado.lecturas = r.lecturas.filter(function (l) { return !isNaN(l.fecha.getTime()); });
+      estado.canal = r.canal || "";
+      estado.error = null;
+      estado.conexion = "ok";
+    } catch (e) {
+      if (estado.solicitud !== c) return;
+      estado.error = errorDeConexion(e, c.fuente);
+      estado.conexion = "error";
+    }
+    estado.solicitud = null;
+    btn.removeAttribute("aria-busy");
+    btn.disabled = false;
+    render();
   }
 
   function programar() {
@@ -172,16 +186,28 @@
   }
 
   function mostrarRuta(enfocar) {
-    estado.ruta = leerRuta();
+    var ruta = leerRuta();
+    if (enfocar && ruta !== estado.ruta) {
+      $("#contenido").dataset.direccion = RUTAS.indexOf(ruta) > RUTAS.indexOf(estado.ruta) ? "adelante" : "atras";
+    }
+    estado.ruta = ruta;
     $$("[data-pantalla]").forEach(function (s) { s.hidden = s.getAttribute("data-pantalla") !== estado.ruta; });
     $$(".nav__boton").forEach(function (a) {
       if (a.getAttribute("data-ruta") === estado.ruta) a.setAttribute("aria-current", "page");
       else a.removeAttribute("aria-current");
     });
     document.title = TITULOS[estado.ruta] + " · Calidad del Agua";
-    if (estado.ruta === "ajustes") llenarFormulario(estado.config);
+    if (estado.ruta === "ajustes") {
+      limpiarPrueba();
+      mensaje($("#ajustes-estado"), "");
+      mostrarClave(false);
+      llenarFormulario(estado.config);
+    }
     render();
-    if (enfocar) $("#contenido").focus({ preventScroll: false });
+    if (enfocar) {
+      $("#contenido").focus({ preventScroll: true });
+      window.scrollTo(0, 0);
+    }
   }
 
   // ---------- Render general ----------
@@ -195,9 +221,16 @@
 
   function renderNav() {
     var c = estado.config;
-    $("#nav-fuente").textContent = c.fuente === "api"
+    var fuente = c.fuente === "api"
       ? "Fuente: MariaDB (API local) · esp32-1"
       : "Fuente: ThingSpeak · canal " + (c.thingspeak.channelId || "sin configurar");
+    var etiqueta = { pendiente: "Conectando…", ok: "Conectado", error: "Sin conexión" }[estado.conexion];
+    var conexion = $("#conexion");
+    actualizarTexto($("#nav-fuente"), fuente);
+    if (conexion.dataset.estado !== estado.conexion) {
+      conexion.dataset.estado = estado.conexion;
+      $("#conexion-texto").textContent = etiqueta;
+    }
   }
 
   // ---------- 1. Inicio ----------
@@ -211,12 +244,14 @@
       b.href = "#historial/" + k;
       b.setAttribute("data-var", k);
       b.innerHTML =
-        '<span class="variable__cab"><span class="variable__nombre">' + v.nombre + '</span><span class="chip" data-chip></span></span>' +
+        '<span class="variable__cab"><span class="variable__icono"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-' + k + '"/></svg></span>' +
+        '<span class="variable__nombre">' + v.nombre + '</span></span>' +
         '<span class="variable__valor"><span data-valor>–</span>' + (v.unidad ? '<span class="variable__unidad">' + v.unidad + "</span>" : "") + "</span>" +
-        '<span><span class="medidor" aria-hidden="true"><span class="medidor__banda" data-banda></span><span class="medidor__marca" data-marca></span></span>' +
+        '<span class="chip" data-chip></span>' +
+        '<span class="variable__medicion"><span class="medidor" aria-hidden="true"><span class="medidor__banda" data-banda></span><span class="medidor__marca" data-marca></span></span>' +
         '<span class="medidor__escala"><span>' + v.escalaMin + '</span><span>' + fmt(v.escalaMax, 0) + "</span></span>" +
         '<span class="medidor__rango" data-rango-txt></span></span>' +
-        '<span class="variable__pie">Ver historial →</span>';
+        '<span class="variable__pie">Ver historial<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg></span>';
       cont.appendChild(b);
     });
   }
@@ -256,7 +291,7 @@
     // Línea de última lectura
     $("#ultima-lectura").textContent = l
       ? "Última lectura " + hace(l.fecha) + " · " + fHora.format(l.fecha) + (estado.canal ? " · " + estado.canal : "")
-      : (estado.cargando ? "Cargando lecturas…" : "Todavía no hay lecturas.");
+      : (estado.solicitud ? "Cargando lecturas…" : "Todavía no hay lecturas.");
 
     // Semáforo
     var caja = $("#semaforo");
@@ -266,9 +301,12 @@
     if (est === "rojo" && res.enRango >= 2) desc = "Un parámetro superó su límite crítico. No reutilices esta agua.";
     if (est === "gris" && l && vencida) desc = "La última lectura tiene más de " + c.minutosSinDatos + " min. Revisa que el ESP32 esté encendido y con WiFi.";
     else if (est === "gris" && l && res.faltantes.length) desc = "Faltan lecturas de: " + res.faltantes.map(function (k) { return S.VARIABLES[k].nombre; }).join(", ") + ".";
-    $("#semaforo-etiqueta").textContent = t.etq;
-    $("#semaforo-desc").textContent = desc;
+    actualizarTexto($("#semaforo-etiqueta"), t.etq);
+    actualizarTexto($("#semaforo-desc"), desc);
     $("#conteo-num").textContent = l && !vencida ? res.enRango : "–";
+    $$(".conteo__escala span").forEach(function (tramo, i) {
+      tramo.classList.toggle("en-rango", !vencida && i < res.enRango);
+    });
 
     var chips = $("#semaforo-chips");
     chips.innerHTML = "";
@@ -288,7 +326,12 @@
       var valor = l ? l[k] : null;
       var u = c.umbrales[k];
       card.querySelector("[data-valor]").textContent = fmtVar(k, valor);
-      chipVariable(card.querySelector("[data-chip]"), res.detalle[k], k, valor);
+      var chip = card.querySelector("[data-chip]");
+      chipVariable(chip, res.detalle[k], k, valor);
+      if (l && vencida) {
+        chip.className = "chip chip--sin-dato";
+        chip.textContent += " · Lectura vencida";
+      }
       var bMin = pct(k, u.min === null ? S.VARIABLES[k].escalaMin : u.min);
       var bMax = pct(k, u.max === null ? S.VARIABLES[k].escalaMax : u.max);
       var banda = card.querySelector("[data-banda]");
@@ -299,7 +342,7 @@
       if (valor !== null) marca.style.left = pct(k, valor) + "%";
       marca.classList.toggle("medidor__marca--fuera", res.detalle[k] === "fuera" || res.detalle[k] === "critico");
       card.querySelector("[data-rango-txt]").textContent = textoRango(k);
-      card.setAttribute("aria-label", S.VARIABLES[k].nombre + ": " + conUnidad(k, valor) + ", " + textoRango(k) + ". Ver historial.");
+      card.setAttribute("aria-label", S.VARIABLES[k].nombre + ": " + conUnidad(k, valor) + ", " + chip.textContent + ", " + textoRango(k) + ". Ver historial.");
     });
   }
 
@@ -358,13 +401,18 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        animation: reducirMovimiento ? false : { duration: 300 },
+        animation: movimiento.matches ? false : { duration: 240 },
         interaction: { mode: "index", intersect: false },
         layout: { padding: { top: 8 } },
         elements: {
           line: { borderWidth: 2, borderColor: COLORES.primario, tension: 0.25 },
           point: {
-            radius: function (c) { return fueraDeRango(estado.variable, c.raw) ? 4 : 0; },
+            radius: function (c) {
+              if (c.raw == null) return 0;
+              if (fueraDeRango(estado.variable, c.raw)) return 4;
+              var datos = c.dataset.data;
+              return datos[c.dataIndex - 1] == null && datos[c.dataIndex + 1] == null ? 3 : 0;
+            },
             hoverRadius: 6,
             backgroundColor: function (c) { return fueraDeRango(estado.variable, c.raw) ? COLORES.rojo : COLORES.primario; },
             borderColor: "#FFFFFF",
@@ -373,7 +421,7 @@
           }
         },
         scales: {
-          x: { grid: { display: false }, border: { color: "#CBD6E4" }, ticks: { maxTicksLimit: 6, maxRotation: 0 } },
+          x: { grid: { display: false }, border: { color: "#CDDBD9" }, ticks: { maxTicksLimit: 6, maxRotation: 0 } },
           y: { grid: { color: COLORES.rejilla }, border: { display: false }, ticks: { maxTicksLimit: 6 } }
         },
         plugins: {
@@ -437,7 +485,10 @@
     g.options.scales.y.suggestedMax = u.max === null ? undefined : u.max + (u.max - (u.min || 0)) * 0.15;
     g.options.scales.y.min = k === "ph" ? undefined : 0;
     $("#hist-canvas").setAttribute("aria-label", "Gráfica de " + v.nombre + " en las últimas " + datos.length + " lecturas. " + enRango + " de " + validos.length + " dentro de rango.");
-    g.update();
+    var vacio = $("#hist-vacio");
+    vacio.hidden = validos.length > 0;
+    if (!vacio.hidden) vacio.textContent = "Aún no hay lecturas de " + v.nombre + ".";
+    g.update(movimiento.matches ? "none" : undefined);
 
     // Tabla (más reciente primero)
     $("#hist-tabla").innerHTML = datos.slice().reverse().map(function (l) {
@@ -474,7 +525,7 @@
     var conteo = { verde: 0, amarillo: 0, rojo: 0, gris: 0 };
     estado.lecturas.forEach(function (l) { conteo[clasificar(l).estado]++; });
     var total = estado.lecturas.length;
-    $("#dist-n").textContent = total ? "· últimas " + total + " lecturas" : "";
+    $("#dist-n").textContent = total ? "· porcentaje de las últimas " + total + " lecturas" : "";
     var barra = $("#dist-barra");
     var orden = ["verde", "amarillo", "rojo", "gris"];
     barra.innerHTML = orden.filter(function (e) { return conteo[e] > 0; }).map(function (e) {
@@ -513,7 +564,12 @@
             var lim = sentido(k, e.lectura[k]) === "baja" || sentido(k, e.lectura[k]) === "ácido" ? "mín " + fmtVar(k, u.min) : "máx " + fmtVar(k, u.max);
             return S.VARIABLES[k].nombre + " " + conUnidad(k, e.lectura[k]) + " (" + lim + ")";
           }).join(" · ")
-        : "Venía de " + nombreEstado(e.de).toLowerCase() + ". Las 3 variables en rango.";
+        : "Venía de " + nombreEstado(e.de).toLowerCase() + ".";
+      if (e.res.faltantes.length) {
+        detalle += " Faltan lecturas de: " + e.res.faltantes.map(function (k) { return S.VARIABLES[k].nombre; }).join(", ") + ".";
+      } else if (!e.res.fuera.length) {
+        detalle += " Los " + S.CLAVES.length + " parámetros están en rango.";
+      }
       return '<li class="evento"><span class="evento__icono bg-' + e.a + '" aria-hidden="true">' + ICONOS[e.a] + "</span>" +
         '<div><p class="evento__titulo">' + titulo + '</p><p class="evento__detalle">' + detalle + "</p></div>" +
         '<span class="evento__hora"><time datetime="' + e.lectura.fecha.toISOString() + '">' + fFecha.format(e.lectura.fecha) + "</time><br>" + hace(e.lectura.fecha) + "</span></li>";
@@ -537,6 +593,7 @@
   function llenarFormulario(c) {
     var f = $("#form-ajustes");
     f.fuente.value = c.fuente;
+    mostrarCamposFuente(c.fuente);
     f.channelId.value = c.thingspeak.channelId || "";
     f.readApiKey.value = c.thingspeak.readApiKey || "";
     f.intervaloSeg.value = c.intervaloSeg;
@@ -577,10 +634,74 @@
     return null;
   }
 
-  function mensajeAjustes(texto, tipo) {
-    var p = $("#ajustes-estado");
-    p.textContent = texto;
-    p.className = "ajustes__estado " + (tipo || "");
+  function mensaje(region, texto, tipo) {
+    if (texto) region.dataset.estado = tipo || "info";
+    else delete region.dataset.estado;
+    region.querySelector(".estado-mensaje__texto").textContent = texto;
+  }
+
+  function mostrarClave(visible) {
+    $("#read-api-key").type = visible ? "text" : "password";
+    var accion = visible ? "Ocultar" : "Mostrar";
+    $("#btn-clave").textContent = accion;
+    $("#btn-clave").setAttribute("aria-label", accion + " clave de lectura");
+  }
+
+  function mostrarCamposFuente(fuente) {
+    $$("[data-thingspeak]").forEach(function (campo) { campo.hidden = fuente !== "thingspeak"; });
+  }
+
+  // Una prueba se refiere al borrador actual, que puede diferir de la fuente guardada.
+  var revisionPrueba = 0;
+  function limpiarPrueba() {
+    revisionPrueba++;
+    $("#btn-probar").disabled = false;
+    $("#btn-probar").removeAttribute("aria-busy");
+    mensaje($("#prueba-estado"), "");
+  }
+
+  async function probarConexion() {
+    var c = leerFormulario();
+    var region = $("#prueba-estado");
+    limpiarPrueba();
+    if (c.fuente === "thingspeak" && !/^\d+$/.test(c.thingspeak.channelId)) {
+      mensaje(region, "Escribe un Channel ID numérico para probar ThingSpeak.", "error");
+      return;
+    }
+    var revision = revisionPrueba;
+    var btn = $("#btn-probar");
+    btn.disabled = true;
+    btn.setAttribute("aria-busy", "true");
+    mensaje(region, "Probando conexión…", "pendiente");
+    var texto, tipo;
+    try {
+      if (c.fuente === "api") {
+        var salud = await Datos.saludAPI(c);
+        texto = "Conexión correcta con MariaDB: " + fmt(salud.lecturas, 0) + " lecturas guardadas" +
+          (salud.ultima ? ", la última " + hace(new Date(salud.ultima)) + "." : ".");
+      } else {
+        c.resultados = 1;
+        var r = await Datos.leerThingSpeak(c);
+        var l = r.lecturas[r.lecturas.length - 1];
+        texto = "Conexión correcta: canal «" + (r.canal || c.thingspeak.channelId) + "»" +
+          (l ? ", última lectura " + hace(l.fecha) + "." : ", pero todavía no tiene lecturas.");
+      }
+      tipo = "ok";
+    } catch (e) {
+      texto = errorDeConexion(e, c.fuente);
+      tipo = "error";
+    }
+    if (revision !== revisionPrueba) return;
+    btn.disabled = false;
+    btn.removeAttribute("aria-busy");
+    mensaje(region, texto, tipo);
+    if (mismaFuente(c, estado.config)) {
+      var recuperarLecturas = tipo === "ok" && !!estado.error;
+      estado.conexion = tipo;
+      estado.error = tipo === "error" ? texto : null;
+      renderNav();
+      if (recuperarLecturas) actualizar();
+    }
   }
 
   // ---------- Eventos ----------
@@ -588,6 +709,10 @@
   function conectarEventos() {
     window.addEventListener("hashchange", function () { mostrarRuta(true); });
     document.addEventListener("visibilitychange", function () { if (!document.hidden) actualizar(); });
+    $(".saltar").addEventListener("click", function (ev) {
+      ev.preventDefault();
+      $("#contenido").focus();
+    });
 
     $("#btn-actualizar").addEventListener("click", actualizar);
 
@@ -605,47 +730,41 @@
       b.addEventListener("click", function () { estado.filtro = b.getAttribute("data-filtro"); renderAlertas(); });
     });
 
+    $("#btn-clave").addEventListener("click", function () { mostrarClave($("#read-api-key").type === "password"); });
+    $("#btn-probar").addEventListener("click", probarConexion);
+    $("#form-ajustes").addEventListener("input", function (ev) {
+      if (["fuente", "channelId", "readApiKey"].indexOf(ev.target.name) >= 0) limpiarPrueba();
+      if (ev.target.name === "fuente") {
+        mostrarCamposFuente(ev.target.value);
+        mostrarClave(false);
+      }
+      mensaje($("#ajustes-estado"), "");
+    });
     $("#form-ajustes").addEventListener("submit", function (ev) {
       ev.preventDefault();
       var c = leerFormulario();
       var err = validar(c);
-      if (err) { mensajeAjustes(err, "error"); return; }
+      if (err) { mensaje($("#ajustes-estado"), err, "error"); return; }
+      if (!mismaFuente(c, estado.config)) {
+        estado.lecturas = [];
+        estado.canal = "";
+        estado.error = null;
+        estado.conexion = "pendiente";
+        renderAlertas();
+      }
       estado.config = c;
       var ok = guardarConfig(c);
-      mensajeAjustes(ok ? "Ajustes guardados." : "Ajustes aplicados, pero este navegador no permite guardarlos.", "ok");
+      mensaje($("#ajustes-estado"), ok ? "Ajustes guardados." : "Ajustes aplicados, pero este navegador no permite guardarlos.");
       programar();
       actualizar();
-    });
-
-    $("#btn-probar").addEventListener("click", function () {
-      var c = leerFormulario();
-      var falla = function (e) {
-        mensajeAjustes(!(e instanceof TypeError) ? e.message
-          : c.fuente === "api" ? "No se pudo conectar con la API. ¿Está corriendo docker compose?"
-          : "No se pudo conectar. Revisa tu internet y el Channel ID.", "error");
-      };
-      mensajeAjustes("Probando conexión…");
-      if (c.fuente === "api") {
-        Datos.saludAPI(c).then(function (j) {
-          mensajeAjustes("Conexión correcta con MariaDB: " + fmt(j.lecturas, 0) + " lecturas guardadas" +
-            (j.ultima ? ", la última " + hace(new Date(j.ultima)) + "." : "."), "ok");
-        }).catch(falla);
-        return;
-      }
-      if (!/^\d+$/.test(c.thingspeak.channelId)) { mensajeAjustes("Escribe un Channel ID numérico para probar ThingSpeak.", "error"); return; }
-      c.resultados = 1;
-      Datos.leerThingSpeak(c).then(function (r) {
-        var l = r.lecturas[r.lecturas.length - 1];
-        mensajeAjustes("Conexión correcta: canal «" + (r.canal || c.thingspeak.channelId) + "»" +
-          (l ? ", última lectura " + hace(l.fecha) + "." : ", pero todavía no tiene lecturas."), "ok");
-      }).catch(falla);
     });
 
     $("#btn-restaurar").addEventListener("click", function () {
       var c = configDefecto();
       c.thingspeak = copiar(estado.config.thingspeak);
+      limpiarPrueba();
       llenarFormulario(c);
-      mensajeAjustes("Valores por defecto cargados. Presiona Guardar para aplicarlos.");
+      mensaje($("#ajustes-estado"), "Valores por defecto cargados. Presiona Guardar para aplicarlos.");
     });
   }
 

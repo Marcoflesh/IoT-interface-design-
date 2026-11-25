@@ -169,6 +169,13 @@ Ninguna se manda por chat ni se sube a GitHub (`.env` y `secretos.h` están en `
 - DBeaver: `Access denied` era la contraseña vieja guardada; `agua` usa la de `DB_PASSWORD`. Marco configuró autenticación con GitHub (antes fallaba con contraseña) y su repo de trabajo es `~/IoT-interface-design-`.
 - Falta: subir el firmware con la Write Key del canal nuevo y ver `API -> 201` y `ThingSpeak -> entrada N`.
 
+## Front end nuevo de un colaborador (2026-11-25)
+- Llegó por zip (el colaborador no podía hacer push). Solo 5 archivos de `docs/`: `index.html`, `css/styles.css`, `assets/favicon.svg`, `js/app.js`, `js/datos.js`. No toca `config.js` (sigue el canal 3596028), `semaforo.js`, la API, el puente, scripts ni Docker.
+- Diseño: barra superior en lugar de lateral (barra inferior en móvil), íconos por parámetro, indicador "Conectado / Sin conexión", tarjeta del semáforo oscura con barra de 4 tramos, Read Key oculta con botón Mostrar, campos de ThingSpeak ocultos si la fuente es MariaDB, prueba de conexión junto a la fuente, mensaje de gráfica vacía, aviso de lectura vencida en cada tarjeta.
+- `datos.js`: mismas URLs; solo agrega límite de 12 s por consulta (`AbortController`). `app.js`: misma lógica de semáforo y fuentes; `actualizar()` ignora respuestas de una fuente vieja; texto de Alertas corregido ("Los 4 parámetros…").
+- **Paleta:** pasó de azul a verde azulado (teal #0B6666, oscuro #123E46). La instrucción del proyecto pedía azul de neutro a oscuro: pendiente que el equipo decida si se queda o se regresa a azul.
+- Revisado: sin recursos externos nuevos (Google Fonts ya estaba), sin `eval`, sin llamadas nuevas; Chrome escritorio y móvil sin errores de JS; semáforo 11/11.
+
 ## Pendiente del equipo
 - Responder el banco de preguntas (divisores, fórmulas, pines) para el firmware real.
 - FEDORA.md Paso 10 (quitar el simulador) y luego conectar el ESP32 real con `esp32/README.md`.

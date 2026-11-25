@@ -16,6 +16,21 @@
     return isFinite(n) ? n : null;
   }
 
+  // El límite incluye la lectura del cuerpo de la respuesta y libera el siguiente intento.
+  async function consultar(url, leerRespuesta) {
+    var control = new AbortController();
+    var limite = setTimeout(function () { control.abort(); }, 12000);
+    try {
+      var respuesta = await fetch(url, { cache: "no-store", signal: control.signal });
+      return await leerRespuesta(respuesta);
+    } catch (e) {
+      if (control.signal.aborted) throw new Error("La fuente tardó demasiado en responder. Vuelve a intentar la conexión.");
+      throw e;
+    } finally {
+      clearTimeout(limite);
+    }
+  }
+
   // ---------- ThingSpeak ----------
 
   function urlThingSpeak(ts, resultados) {
@@ -30,12 +45,11 @@
     if (!ts.channelId) {
       return Promise.reject(new Error("Falta el Channel ID de ThingSpeak (pantalla Ajustes)."));
     }
-    return fetch(urlThingSpeak(ts, config.resultados), { cache: "no-store" })
-      .then(function (r) {
-        if (r.status === 400 || r.status === 404) throw new Error("Canal no encontrado o Read API Key incorrecta.");
-        if (!r.ok) throw new Error("ThingSpeak respondió " + r.status + ".");
-        return r.json();
-      })
+    return consultar(urlThingSpeak(ts, config.resultados), function (r) {
+      if (r.status === 400 || r.status === 404) throw new Error("Canal no encontrado o Read API Key incorrecta.");
+      if (!r.ok) throw new Error("ThingSpeak respondió " + r.status + ".");
+      return r.json();
+    })
       .then(function (json) {
         if (json === -1 || !json || !json.feeds) {
           throw new Error("El canal es privado: falta la Read API Key o no es la de este canal (Ajustes).");
@@ -65,13 +79,12 @@
 
   function leerAPI(config) {
     // La base solo tiene un dispositivo (esp32-1): lo directo y lo copiado de ThingSpeak.
-    return fetch(baseAPI(config) + "/api/lecturas?limit=" + config.resultados, { cache: "no-store" })
-      .then(function (r) {
-        if (r.status === 404) throw new Error("No se encontró la API. Solo funciona en localhost con Docker (http://localhost:8080).");
-        if (r.status === 503) throw new Error("La API no puede conectarse a MariaDB. Revisa: docker compose ps");
-        if (!r.ok) throw new Error("La API respondió " + r.status + ".");
-        return r.json();
-      })
+    return consultar(baseAPI(config) + "/api/lecturas?limit=" + config.resultados, function (r) {
+      if (r.status === 404) throw new Error("No se encontró la API. Solo funciona en localhost con Docker (http://localhost:8080).");
+      if (r.status === 503) throw new Error("La API no puede conectarse a MariaDB. Revisa: docker compose ps");
+      if (!r.ok) throw new Error("La API respondió " + r.status + ".");
+      return r.json();
+    })
       .then(function (json) {
         return {
           canal: "MariaDB",
@@ -90,10 +103,10 @@
   }
 
   function saludAPI(config) {
-    return fetch(baseAPI(config) + "/api/salud", { cache: "no-store" }).then(function (r) {
+    return consultar(baseAPI(config) + "/api/salud", function (r) {
       if (r.status === 404) throw new Error("No se encontró la API. Solo funciona en localhost con Docker (http://localhost:8080).");
       return r.json().then(function (j) {
-        if (!j.ok) throw new Error(j.error || "La API no responde.");
+        if (!r.ok || !j.ok) throw new Error(j.error || "La API no responde.");
         return j;
       });
     });
