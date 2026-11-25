@@ -176,6 +176,12 @@ Ninguna se manda por chat ni se sube a GitHub (`.env` y `secretos.h` están en `
 - **Paleta:** pasó de azul a verde azulado (teal #0B6666, oscuro #123E46). La instrucción del proyecto pedía azul de neutro a oscuro: pendiente que el equipo decida si se queda o se regresa a azul.
 - Revisado: sin recursos externos nuevos (Google Fonts ya estaba), sin `eval`, sin llamadas nuevas; Chrome escritorio y móvil sin errores de JS; semáforo 11/11.
 
+## Ajustes del front end: "Water Boys" (2026-11-25)
+- Segundo zip del colaborador. Cambia `docs/index.html`, `css/styles.css`, `assets/favicon.svg`, `js/app.js` y el título de `index.html` (raíz). La redirección a `docs/` sigue igual; `datos.js` sin cambios.
+- Marca: "Water Boys" (título, barra y pestaña) con el favicon como logo (gota azul sobre fondo azul marino). Semáforo con 3 luces grandes; título y conteo más chicos. Textos: "sensores"/"dispositivo" en lugar de "ESP32".
+- Se quitó de la barra el texto de la fuente ("Fuente: ThingSpeak · canal …"); solo queda "Conectado/Sin conexión". El pie ya no menciona la NOM-127 ni que el rango de temperatura es propuesta del equipo (sigue en README y PUESTA_EN_MARCHA.md).
+- Sin cambios en lógica, fuentes, API ni Docker. Chrome escritorio y móvil sin errores de JS. Paleta: sigue teal en la página (el favicon es azul).
+
 ## Pendiente del equipo
 - Responder el banco de preguntas (divisores, fórmulas, pines) para el firmware real.
 - FEDORA.md Paso 10 (quitar el simulador) y luego conectar el ESP32 real con `esp32/README.md`.

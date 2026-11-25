@@ -65,3 +65,4 @@
 | R50 | Usuario | Paso a paso completo en un archivo nuevo + FEDORA.md | `PUESTA_EN_MARCHA.md`, FEDORA.md Paso 12 | ✅ Hecho |
 | R51 | Usuario | probar-thingspeak dice que falta la Read Key aunque está puesta | Diagnóstico en `probar-thingspeak.sh` (ruta, repetidas, formato, Write Key, rechazo) | ✅ Hecho (6 casos con ThingSpeak falso) |
 | R52 | Usuario | Subir el front end nuevo de un colaborador sin tocar backend ni estructura | 5 archivos de `docs/` (HTML, CSS, favicon, `app.js`, `datos.js`); mismas pantallas, rutas, campos y fuentes | ✅ Hecho (Chrome escritorio y móvil). Paleta cambió a teal: por decidir |
+| R53 | Usuario | Subir los ajustes del front end (marca Water Boys) | `docs/` + título de `index.html` raíz; redirección intacta | ✅ Hecho (Chrome) |

@@ -21,7 +21,7 @@
     verde:    { etq: "Agua en buen estado", desc: "Los 4 parámetros están dentro de rango." },
     amarillo: { etq: "Precaución", desc: "Solo 3 o 2 de los 4 parámetros están en rango. Revisa los marcados antes de reutilizar el agua." },
     rojo:     { etq: "No apta", desc: "Solo 1 o ninguno de los 4 parámetros está en rango. No reutilices esta agua." },
-    gris:     { etq: "Sin datos", desc: "Esperando lecturas del ESP32." }
+    gris:     { etq: "Sin datos", desc: "Esperando lecturas de los sensores." }
   };
   var ICONOS = { verde: "✓", amarillo: "!", rojo: "✕", gris: "?" };
 
@@ -196,7 +196,7 @@
       if (a.getAttribute("data-ruta") === estado.ruta) a.setAttribute("aria-current", "page");
       else a.removeAttribute("aria-current");
     });
-    document.title = TITULOS[estado.ruta] + " · Calidad del Agua";
+    document.title = TITULOS[estado.ruta] + " · Water Boys";
     if (estado.ruta === "ajustes") {
       limpiarPrueba();
       mensaje($("#ajustes-estado"), "");
@@ -220,13 +220,8 @@
   }
 
   function renderNav() {
-    var c = estado.config;
-    var fuente = c.fuente === "api"
-      ? "Fuente: MariaDB (API local) · esp32-1"
-      : "Fuente: ThingSpeak · canal " + (c.thingspeak.channelId || "sin configurar");
     var etiqueta = { pendiente: "Conectando…", ok: "Conectado", error: "Sin conexión" }[estado.conexion];
     var conexion = $("#conexion");
-    actualizarTexto($("#nav-fuente"), fuente);
     if (conexion.dataset.estado !== estado.conexion) {
       conexion.dataset.estado = estado.conexion;
       $("#conexion-texto").textContent = etiqueta;
@@ -299,7 +294,7 @@
     var t = TEXTOS[est];
     var desc = t.desc;
     if (est === "rojo" && res.enRango >= 2) desc = "Un parámetro superó su límite crítico. No reutilices esta agua.";
-    if (est === "gris" && l && vencida) desc = "La última lectura tiene más de " + c.minutosSinDatos + " min. Revisa que el ESP32 esté encendido y con WiFi.";
+    if (est === "gris" && l && vencida) desc = "La última lectura tiene más de " + c.minutosSinDatos + " min. Revisa que el dispositivo esté encendido y conectado a WiFi.";
     else if (est === "gris" && l && res.faltantes.length) desc = "Faltan lecturas de: " + res.faltantes.map(function (k) { return S.VARIABLES[k].nombre; }).join(", ") + ".";
     actualizarTexto($("#semaforo-etiqueta"), t.etq);
     actualizarTexto($("#semaforo-desc"), desc);

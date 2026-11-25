@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Calidad del Agua · Monitoreo IoT con ESP32</title>
-  <meta name="description" content="Semáforo de calidad del agua con pH, turbidez y conductividad medidos por un ESP32 y publicados en ThingSpeak.">
+  <title>Water Boys</title>
+  <meta name="description" content="Consulta el semáforo de calidad del agua y las lecturas de pH, turbidez, conductividad y temperatura.">
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,7 +16,6 @@
 
   <svg class="simbolos" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
     <defs>
-      <symbol id="i-gota" viewBox="0 0 32 32"><path d="M16 3.7C13.5 7.8 6.6 15.2 6.6 20.2a9.4 9.4 0 0 0 18.8 0C25.4 15.2 18.5 7.8 16 3.7Z"/><path d="M7.6 21.3c3-2.9 5.7-3 8.5-.6s5.6 2.4 8.3-.3"/></symbol>
       <symbol id="i-ph" viewBox="0 0 24 24"><path d="M9 3h6m-5 0v6l-5.3 8.5A2.2 2.2 0 0 0 6.6 21h10.8a2.2 2.2 0 0 0 1.9-3.5L14 9V3M8 15h8"/></symbol>
       <symbol id="i-turbidez" viewBox="0 0 24 24"><path d="M3 7q3-3 6 0t6 0t6 0M3 12q3-3 6 0t6 0t6 0M3 17q3-3 6 0t6 0t6 0"/></symbol>
       <symbol id="i-conductividad" viewBox="0 0 24 24"><path d="m14 2-9 12h6l-1 8 9-13h-6z"/></symbol>
@@ -30,9 +29,9 @@
   <div class="app">
     <header class="barra">
       <div class="barra__interior">
-        <a class="marca" href="#inicio" aria-label="Calidad del Agua, Inicio">
-          <span class="marca__sello"><svg viewBox="0 0 32 32" aria-hidden="true"><use href="#i-gota"/></svg></span>
-          <span><strong class="marca__nombre">Calidad del Agua</strong><span class="marca__sub">Monitoreo IoT · ESP32</span></span>
+        <a class="marca" href="#inicio" aria-label="Water Boys, Inicio">
+          <img class="marca__sello" src="./assets/favicon.svg" width="42" height="42" alt="">
+          <strong class="marca__nombre">Water Boys</strong>
         </a>
         <nav class="nav" aria-label="Pantallas">
           <ul class="nav__lista">
@@ -50,9 +49,8 @@
               <span>Ajustes</span></a></li>
           </ul>
         </nav>
-        <a class="conexion" id="conexion" data-estado="pendiente" href="#ajustes" aria-labelledby="conexion-texto nav-fuente" title="Ajustes de conexión">
+        <a class="conexion" id="conexion" data-estado="pendiente" href="#ajustes" aria-labelledby="conexion-texto" title="Ajustes de conexión">
           <span class="conexion__estado"><span class="indicador" aria-hidden="true"></span><span id="conexion-texto" role="status">Conectando…</span></span>
-          <span class="conexion__fuente" id="nav-fuente">Fuente: ThingSpeak</span>
         </a>
       </div>
     </header>
@@ -90,7 +88,7 @@
             </div>
             <div role="status" aria-atomic="true">
               <p class="semaforo__etiqueta" id="semaforo-etiqueta">Sin datos</p>
-              <p class="semaforo__desc" id="semaforo-desc">Esperando la primera lectura del ESP32.</p>
+              <p class="semaforo__desc" id="semaforo-desc">Esperando la primera lectura de los sensores.</p>
             </div>
             <ul class="semaforo__chips" id="semaforo-chips"></ul>
           </div>
@@ -249,7 +247,7 @@
 
       <footer class="pie">
         <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#i-info"/></svg>
-        <p>Indicadores de calidad, no un análisis de laboratorio certificado. Referencia de umbrales: NOM-127-SSA1-2021 (pH, turbidez y sólidos disueltos); el rango de temperatura es una propuesta del equipo.</p>
+        <p>Indicadores de calidad, no un análisis de laboratorio certificado.</p>
       </footer>
     </main>
   </div>
