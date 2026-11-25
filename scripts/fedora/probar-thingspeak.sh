@@ -27,7 +27,14 @@ revisar_repetida() {
     mal "$1 aparece $n veces en el .env (líneas $lineas). Se usa la ÚLTIMA: deja solo una."
     return 1
   fi
-  [ "$n" -eq 0 ] && { mal "No hay ninguna línea $1= en el .env (¿la escribiste con otro nombre?)."; return 1; }
+  if [ "$n" -eq 0 ]; then
+    mal "No hay ninguna línea $1= en el .env."
+    # ¿Hay una con nombre parecido? (ej. THINGSPEAK_READ_ID en lugar de THINGSPEAK_READ_KEY)
+    local parecida
+    parecida=$(grep -noE "^[[:space:]]*${1%_*}_[A-Za-z_]*[[:space:]]*=" .env | head -1 | tr -d ' =')
+    [ -n "$parecida" ] && info "En la línea ${parecida%%:*} está ${parecida#*:}: cámbiale el nombre a $1"
+    return 1
+  fi
   return 0
 }
 
