@@ -63,3 +63,4 @@
 | R48 | Usuario | Borrar la base vieja y crear una nueva limpia | `scripts/fedora/base-nueva.sh` | ✅ Hecho (probado con MariaDB real) |
 | R49 | Usuario | Que no se mezclen/dupliquen ThingSpeak y lo directo | entry_id único + `origen`; revisión de repetidos en `ver-mariadb` y DBeaver | ✅ Hecho (5 entradas → 5 filas) |
 | R50 | Usuario | Paso a paso completo en un archivo nuevo + FEDORA.md | `PUESTA_EN_MARCHA.md`, FEDORA.md Paso 12 | ✅ Hecho |
+| R51 | Usuario | probar-thingspeak dice que falta la Read Key aunque está puesta | Diagnóstico en `probar-thingspeak.sh` (ruta, repetidas, formato, Write Key, rechazo) | ✅ Hecho (6 casos con ThingSpeak falso) |

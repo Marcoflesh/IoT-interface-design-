@@ -159,6 +159,11 @@ Ninguna se manda por chat ni se sube a GitHub (`.env` y `secretos.h` están en `
 - "Sin interpolar": cada lectura queda una vez (índice único canal + entry_id), `origen` dice si llegó directo o por el puente y nada rellena huecos. Prueba completa sobre la base nueva: 5 entradas → 5 filas (3 api, 2 thingspeak), 0 repetidas, colores correctos.
 - Nuevo `PUESTA_EN_MARCHA.md` (qué va en `.env`, `secretos.h`, `config.js`; pasos 0 a 9; DBeaver; checklist; problemas) y FEDORA.md Paso 12 con los mismos comandos.
 
+## probar-thingspeak.sh con diagnóstico (2026-11-24)
+- Marco: el script decía que faltaba la Read Key aunque estaba puesta. El mensaje viejo no distinguía "vacía" de "rechazada" ni decía qué leyó.
+- Ahora dice qué `.env` lee (ruta completa: su repo está en una carpeta anidada), avisa si `THINGSPEAK_READ_KEY` o el Channel ID aparecen más de una vez (gana la última línea, típico con la línea vacía de la plantilla), si no existe la variable, si la llave no tiene 16 letras/números (y qué carácter sobra, p. ej. espacio no separable al copiar), si es igual a la Write Key, y si ThingSpeak la rechaza: canal viejo, Write/User API Key o llave regenerada. También avisa si el canal resulta público.
+- Probado con un ThingSpeak falso en 6 casos. No probado contra ThingSpeak real (sin salida desde el entorno). La versión .ps1 sigue con el mensaje viejo.
+
 ## Pendiente del equipo
 - Responder el banco de preguntas (divisores, fórmulas, pines) para el firmware real.
 - FEDORA.md Paso 10 (quitar el simulador) y luego conectar el ESP32 real con `esp32/README.md`.
