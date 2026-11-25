@@ -12,8 +12,8 @@ window.APP_CONFIG = {
   fuente: "thingspeak",
 
   thingspeak: {
-    channelId: "3591663",     // ej. "2741234"
-    readApiKey: ""     // el canal es privado: aquí va la READ API Key (la pone configurar-pagina.sh)
+    channelId: "3596028",     // ej. "2741234"
+    readApiKey: "QLLITM7X7OVV919H"     // el canal es privado: aquí va la READ API Key (la pone configurar-pagina.sh)
   },
 
   // API propia (MariaDB). Vacío = el mismo servidor que sirve la página (Docker, localhost:8080).
