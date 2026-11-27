@@ -28,6 +28,13 @@ test("acepta diagnóstico: rssi, voltajes crudos y firmware", () => {
   assert.strictEqual(r.lectura.firmware, "v1.2.0");
 });
 
+test("turbidez en %: de 0 a 100", () => {
+  assert.ifError(validarLectura({ turbidez: 0 }).error);
+  assert.ifError(validarLectura({ turbidez: 100 }).error);
+  assert.ok(validarLectura({ turbidez: 100.5 }).error, "más de 100 % no existe");
+  assert.ok(validarLectura({ turbidez: -1 }).error);
+});
+
 test("solo acepta el dispositivo esp32-1", () => {
   assert.strictEqual(validarLectura({ ph: 7, dispositivo: "esp32-1" }).lectura.dispositivo, "esp32-1");
   for (const otro of ["esp32-sim", "esp32-sim-ts", "esp-32-sim", "prueba-terminal", "esp32-1-ts", "esp32-2"]) {
@@ -278,6 +285,32 @@ conDB("migración 004: borra el simulador y deja intacto el ESP32 real", async (
     await pool.query("DELETE FROM calibraciones");
     await pool.query("DELETE FROM lecturas");
     await pool.query("DELETE FROM dispositivos WHERE id <> 'esp32-1'");
+    await pool.end();
+  }
+});
+
+conDB("migración 007: turbidez en %, borra valores viejos en NTU mayores a 100", async () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const { migrar } = require("../src/migrar");
+  const pool = crearPool(process.env.TEST_DB_USER, process.env.TEST_DB_PASSWORD);
+  try {
+    await migrar(pool, { log: () => {} });
+    await pool.query("DELETE FROM lecturas");
+    await pool.query("ALTER TABLE lecturas MODIFY COLUMN turbidez DECIMAL(7,2) NULL");   // como estaba antes
+    await pool.query("INSERT INTO lecturas (fecha, dispositivo, ph, turbidez, temperatura) VALUES (NOW(3), 'esp32-1', 7.1, 3.5, 22), (NOW(3), 'esp32-1', 7.2, 850, 23)");
+
+    const sql = fs.readFileSync(path.join(__dirname, "..", "migraciones", "007_turbidez_porcentaje.sql"), "utf8");
+    for (const s of sentencias(sql)) await pool.query(s);
+    for (const s of sentencias(sql)) await pool.query(s);   // dos veces: no debe fallar
+
+    const filas = await pool.query("SELECT ph, turbidez, temperatura FROM lecturas ORDER BY ph");
+    assert.deepStrictEqual(filas.map((f) => [f.ph, f.turbidez, f.temperatura]), [[7.1, 3.5, 22], [7.2, null, 23]]);
+    const col = await pool.query("SELECT COLUMN_TYPE, COLUMN_COMMENT FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'lecturas' AND COLUMN_NAME = 'turbidez'");
+    assert.strictEqual(col[0].COLUMN_TYPE, "decimal(5,2)");
+    assert.match(col[0].COLUMN_COMMENT, /%/);
+  } finally {
+    await pool.query("DELETE FROM lecturas");
     await pool.end();
   }
 });

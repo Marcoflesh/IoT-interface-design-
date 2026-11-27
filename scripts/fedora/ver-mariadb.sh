@@ -34,21 +34,21 @@ foto() {
 
   echo "== Últimas 10 lecturas (hora de México) · semáforo: verde 4/4 en rango, amarillo 3-2/4, rojo 1-0/4"
   consulta "SELECT l.id, DATE_FORMAT($FECHA_L, '%H:%i:%s') AS hora, l.dispositivo, l.origen,
-              l.ts_entry_id AS ts_entrada, l.ph, l.turbidez AS ntu, l.conductividad AS 'µS/cm', l.temperatura AS '°C', l.en_rango,
+              l.ts_entry_id AS ts_entrada, l.ph, l.turbidez AS 'turb_%', l.conductividad AS 'µS/cm', l.temperatura AS '°C', l.en_rango,
               CASE
                 WHEN l.ph IS NULL OR l.turbidez IS NULL OR l.conductividad IS NULL OR l.temperatura IS NULL THEN 'gris'
                 WHEN en_rango = 4 THEN 'verde'
                 WHEN en_rango >= 2 THEN 'amarillo'
                 ELSE 'rojo'
               END AS semaforo
-            FROM (SELECT *, (ph BETWEEN 6.5 AND 8.5) + (turbidez BETWEEN 0 AND 4)
-                          + (conductividad BETWEEN 50 AND 1500) + (temperatura BETWEEN 10 AND 30) AS en_rango
+            FROM (SELECT *, (ph BETWEEN 6.5 AND 8.5) + (turbidez BETWEEN 0 AND 10)
+                          + (conductividad BETWEEN 50 AND 1500) + (temperatura BETWEEN 10 AND 40) AS en_rango
                   FROM lecturas) l
             ORDER BY l.fecha DESC, l.id DESC LIMIT 10;"
 
   echo "== Última hora por dispositivo y origen"
   consulta "SELECT dispositivo, origen, COUNT(*) AS lecturas,
-              ROUND(AVG(ph), 2) AS ph_prom, ROUND(AVG(turbidez), 1) AS ntu_prom,
+              ROUND(AVG(ph), 2) AS ph_prom, ROUND(AVG(turbidez), 1) AS turb_prom,
               ROUND(AVG(conductividad), 0) AS ec_prom, ROUND(AVG(temperatura), 1) AS temp_prom
             FROM lecturas WHERE fecha >= UTC_TIMESTAMP() - INTERVAL 1 HOUR
             GROUP BY dispositivo, origen ORDER BY lecturas DESC;"

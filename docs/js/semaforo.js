@@ -14,25 +14,26 @@
   "use strict";
 
   // Umbrales por defecto.
-  // pH y turbidez: NOM-127-SSA1-2021 (pH 6.5 a 8.5, turbiedad máx. 4 UNT).
+  // pH: NOM-127-SSA1-2021 (6.5 a 8.5).
+  // Turbidez: el sensor la da en porcentaje (0 % = agua limpia). Límites del equipo: hasta 10 % en rango, crítico arriba de 15 %.
   // Conductividad: la norma no la fija; se deriva del límite de SDT (1000 mg/L)
   // con factor TDS ≈ 0.65 x EC  →  ≈ 1500 µS/cm. Mínimo 50 µS/cm (spec del equipo):
   // abajo de eso casi siempre es la sonda fuera del agua o desconectada.
-  // Temperatura: la NOM-127 no fija un rango. 10 a 30 °C es una propuesta del equipo
-  // (agua de la llave a temperatura ambiente); ajústenla en la pantalla Ajustes.
+  // Temperatura: la NOM-127 no fija un rango. 10 a 40 °C (crítico arriba de 45 °C) es una propuesta
+  // del equipo; ajústenla en la pantalla Ajustes.
   // Límites críticos: propuesta del equipo, ajustables en la pantalla Ajustes.
   var UMBRALES_DEFECTO = {
     ph:            { min: 6.5, max: 8.5,  critMin: 6.0, critMax: 9.0 },
-    turbidez:      { min: 0,   max: 4,    critMin: null, critMax: 50 },
+    turbidez:      { min: 0,   max: 10,   critMin: null, critMax: 15 },
     conductividad: { min: 50,  max: 1500, critMin: null, critMax: 3000 },
-    temperatura:   { min: 10,  max: 30,   critMin: 5,    critMax: 35 }
+    temperatura:   { min: 10,  max: 40,   critMin: 5,    critMax: 45 }
   };
 
   var VARIABLES = {
     ph:            { nombre: "pH",            unidad: "",      decimales: 2, escalaMin: 0, escalaMax: 14 },
-    turbidez:      { nombre: "Turbidez",      unidad: "NTU",   decimales: 1, escalaMin: 0, escalaMax: 20 },
+    turbidez:      { nombre: "Turbidez",      unidad: "%",     decimales: 1, escalaMin: 0, escalaMax: 30 },
     conductividad: { nombre: "Conductividad", unidad: "µS/cm", decimales: 0, escalaMin: 0, escalaMax: 3000 },
-    temperatura:   { nombre: "Temperatura",   unidad: "°C",    decimales: 1, escalaMin: 0, escalaMax: 40 }
+    temperatura:   { nombre: "Temperatura",   unidad: "°C",    decimales: 1, escalaMin: 0, escalaMax: 50 }
   };
 
   var CLAVES = ["ph", "turbidez", "conductividad", "temperatura"];

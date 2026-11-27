@@ -35,9 +35,9 @@ La página tiene 4 pantallas: **Inicio** (semáforo y 4 parámetros: pH, turbide
 | Variable | Dentro de rango | Fuente del límite |
 |---|---|---|
 | pH | 6.5 a 8.5 | NOM-127-SSA1-2021 |
-| Turbidez | ≤ 4 NTU | NOM-127-SSA1-2021 (4 UNT) |
+| Turbidez | 0 a 10 % (0 % = agua limpia) | Límite del equipo: el sensor la mide en porcentaje |
 | Conductividad | 50 a 1500 µS/cm | Derivado del límite de SDT de la NOM (1000 mg/L, factor ≈ 0.65). Abajo de 50 suele ser la sonda fuera del agua. |
-| Temperatura | 10 a 30 °C | Propuesta del equipo: la NOM-127 no fija temperatura. Se cambia en Ajustes. |
+| Temperatura | 10 a 40 °C | Propuesta del equipo: la NOM-127 no fija temperatura. Se cambia en Ajustes. |
 
 | Color | Regla |
 |---|---|
@@ -46,7 +46,7 @@ La página tiene 4 pantallas: **Inicio** (semáforo y 4 parámetros: pH, turbide
 | 🔴 Rojo | 1 o ninguno de los 4 en rango |
 | ⚪ Gris | Falta una lectura, o la última tiene más de 3 min (el ESP32 dejó de enviar) |
 
-**Opcional (apagado por defecto, en Ajustes):** rojo inmediato si un solo parámetro pasa su límite crítico (pH < 6.0 o > 9.0, turbidez > 50 NTU, conductividad > 3000 µS/cm, temperatura < 5 o > 35 °C).
+**Opcional (apagado por defecto, en Ajustes):** rojo inmediato si un solo parámetro pasa su límite crítico (pH < 6.0 o > 9.0, turbidez > 15 %, conductividad > 3000 µS/cm, temperatura < 5 o > 45 °C).
 
 ---
 
@@ -157,7 +157,7 @@ thingspeak: { channelId: "SU_CHANNEL_ID", readApiKey: "SU_READ_KEY" },
 | Agua con bastante sal | 🟡 Amarillo (conductividad alta) |
 | Agua con tierra y vinagre | 🟡 Amarillo (2 de 4 en rango: turbidez alta y pH ácido) |
 | Agua con tierra, vinagre y mucha sal | 🔴 Rojo (1 de 4 en rango) |
-| Agua caliente (más de 30 °C) | 🟡 Amarillo (temperatura alta) |
+| Agua caliente (más de 40 °C) | 🟡 Amarillo (temperatura alta) |
 | Sonda de conductividad fuera del agua | 🟡 Amarillo (conductividad < 50) |
 | Desconectar el ESP32 por 3 min | ⚪ Gris |
 
@@ -180,9 +180,10 @@ SELECT * FROM resumen_diario WHERE dispositivo = 'esp32-1';
 SELECT * FROM estado_dispositivos;
 
 -- Lecturas fuera de rango del ESP32 real (mismos umbrales del semáforo)
-SELECT fecha, ph, turbidez, conductividad FROM lecturas
+SELECT fecha, ph, turbidez, conductividad, temperatura FROM lecturas
 WHERE dispositivo = 'esp32-1'
-  AND (ph NOT BETWEEN 6.5 AND 8.5 OR turbidez > 4 OR conductividad NOT BETWEEN 50 AND 1500);
+  AND (ph NOT BETWEEN 6.5 AND 8.5 OR turbidez > 10 OR conductividad NOT BETWEEN 50 AND 1500
+       OR temperatura NOT BETWEEN 10 AND 40);
 
 -- Exportar a Excel: en Adminer, botón "Exportar" → formato CSV.
 ```

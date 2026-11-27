@@ -122,7 +122,7 @@ if not all(e[:4] in n for e, n in zip(esperado, nombres)):
     print("\033[33m! Revisa el orden: Field 1 pH, Field 2 Turbidez, Field 3 Conductividad, Field 4 Temperatura.\033[0m")
 f = d.get("feeds", [])
 print("  Última entrada: %s" % ("ninguna todavía (canal limpio)" if not f else
-      "entry_id %s · %s · pH %s · %s NTU · %s µS/cm · %s °C" % (f[-1]["entry_id"], f[-1]["created_at"],
+      "entry_id %s · %s · pH %s · turbidez %s %% · %s µS/cm · %s °C" % (f[-1]["entry_id"], f[-1]["created_at"],
       f[-1].get("field1"), f[-1].get("field2"), f[-1].get("field3"), f[-1].get("field4"))))
 '
 

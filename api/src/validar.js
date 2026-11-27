@@ -4,7 +4,7 @@
 // no agua "mala". (Los umbrales de calidad del semáforo viven en la página.)
 const LIMITES_FISICOS = {
   ph: [0, 14],
-  turbidez: [0, 4000],
+  turbidez: [0, 100],       // % (0 = agua limpia)
   conductividad: [0, 20000],
   temperatura: [-10, 100]
 };

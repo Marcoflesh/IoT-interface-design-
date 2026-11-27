@@ -43,7 +43,7 @@ $f = @($d.feeds)
 if ($f.Count -eq 0 -or $null -eq $f[0]) { Write-Info 'Última entrada: ninguna todavía' }
 else {
   $u = $f[-1]
-  Write-Info "Última entrada: entry_id $($u.entry_id) · $($u.created_at) · pH $($u.field1) · $($u.field2) NTU · $($u.field3) µS/cm · $($u.field4) °C"
+  Write-Info "Última entrada: entry_id $($u.entry_id) · $($u.created_at) · pH $($u.field1) · turbidez $($u.field2) % · $($u.field3) µS/cm · $($u.field4) °C"
 }
 Write-Host ''
 Write-Host 'Listo. Si esto funciona, el puente y la página pueden leer el canal.'

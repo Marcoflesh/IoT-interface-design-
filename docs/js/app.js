@@ -8,6 +8,10 @@
 
   var S = window.Semaforo;
   var CLAVE_LS = "calidadAgua.ajustes.v1";
+  // Sube cuando cambian los límites por defecto: los navegadores con Ajustes guardados de una versión
+  // anterior toman los nuevos de esos parámetros (2 = turbidez en % y temperatura hasta 40 °C).
+  var VERSION_UMBRALES = 2;
+  var CAMBIADOS_EN_V2 = ["turbidez", "temperatura"];
   var RUTAS = ["inicio", "historial", "alertas", "ajustes"];
   var TITULOS = { inicio: "Estado del agua", historial: "Historial", alertas: "Alertas", ajustes: "Ajustes" };
   var movimiento = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -79,7 +83,11 @@
         c.intervaloSeg = guardada.intervaloSeg || c.intervaloSeg;
         c.criticoRojo = !!guardada.criticoRojo;
         if (guardada.umbrales) {
-          S.CLAVES.forEach(function (k) { c.umbrales[k] = Object.assign(c.umbrales[k], guardada.umbrales[k] || {}); });
+          var vieja = guardada.versionUmbrales !== VERSION_UMBRALES;
+          S.CLAVES.forEach(function (k) {
+            if (vieja && CAMBIADOS_EN_V2.indexOf(k) >= 0) return;   // se quedan los nuevos por defecto
+            c.umbrales[k] = Object.assign(c.umbrales[k], guardada.umbrales[k] || {});
+          });
         }
       }
     } catch (e) { /* almacenamiento no disponible: se usan los valores por defecto */ }
@@ -90,7 +98,7 @@
     try {
       localStorage.setItem(CLAVE_LS, JSON.stringify({
         fuente: c.fuente, thingspeak: c.thingspeak, api: c.api, intervaloSeg: c.intervaloSeg,
-        criticoRojo: c.criticoRojo, umbrales: c.umbrales
+        criticoRojo: c.criticoRojo, umbrales: c.umbrales, versionUmbrales: VERSION_UMBRALES
       }));
       return true;
     } catch (e) { return false; }

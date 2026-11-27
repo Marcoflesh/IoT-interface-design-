@@ -5,7 +5,7 @@
  * las lecturas lleguen a MariaDB (por la API de la laptop) y a ThingSpeak:
  *   - Manda el header X-API-Key. Sin él la API responde 401 y no guarda nada.
  *   - Usa los nombres que entiende la API: conductividad (µS/cm) y temperatura (°C).
- *     pH y turbidez van como null hasta conectar esos sensores.
+ *     pH y turbidez (en %, 0 = agua limpia) van como null hasta conectar esos sensores.
  *   - Primero publica en ThingSpeak y manda a la API el entry_id que le dio: así el
  *     puente no copia esa lectura otra vez y en MariaDB queda una sola fila en esp32-1.
  *   - La distancia del HC-SR04T solo se muestra en el monitor serie (no se guarda).
@@ -133,7 +133,7 @@ int enviarAPI(long entradaTS) {
 }
 
 // ThingSpeak → lo que lee la página en GitHub Pages. Se salta si no hay Write Key.
-// field3 = conductividad · field4 = temperatura (field1 pH y field2 turbidez cuando los conecten)
+// field3 = conductividad · field4 = temperatura (field1 pH y field2 turbidez en %, cuando los conecten)
 // Regresa el entry_id que dio ThingSpeak (0 = rechazada o no enviada).
 long enviarThingSpeak() {
   if (strlen(TS_WRITE_KEY) < 10 || strncmp(TS_WRITE_KEY, "PEGAR", 5) == 0) return 0;

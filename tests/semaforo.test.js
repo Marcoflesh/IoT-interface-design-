@@ -6,6 +6,16 @@ const S = require("../docs/js/semaforo.js");
 
 const limpia = { ph: 7.2, turbidez: 1.5, conductividad: 600, temperatura: 22 };
 
+test("turbidez en %: hasta 10 en rango, crítico arriba de 15; temperatura hasta 40, crítico 45", () => {
+  assert.strictEqual(S.VARIABLES.turbidez.unidad, "%");
+  assert.deepStrictEqual(S.UMBRALES_DEFECTO.turbidez, { min: 0, max: 10, critMin: null, critMax: 15 });
+  assert.deepStrictEqual(S.UMBRALES_DEFECTO.temperatura, { min: 10, max: 40, critMin: 5, critMax: 45 });
+  assert.strictEqual(S.clasificar({ ...limpia, turbidez: 10.1 }).detalle.turbidez, "fuera");
+  assert.strictEqual(S.clasificar({ ...limpia, turbidez: 15.1 }).detalle.turbidez, "critico");
+  assert.strictEqual(S.clasificar({ ...limpia, turbidez: 15.1 }, S.UMBRALES_DEFECTO, { criticoRojo: true }).estado, "rojo");
+  assert.strictEqual(S.clasificar({ ...limpia, temperatura: 45.5 }).detalle.temperatura, "critico");
+});
+
 test("son 4 parámetros, temperatura incluida", () => {
   assert.deepStrictEqual(S.CLAVES, ["ph", "turbidez", "conductividad", "temperatura"]);
   assert.strictEqual(S.VARIABLES.temperatura.unidad, "°C");
@@ -19,10 +29,10 @@ test("verde: los 4 en rango", () => {
 });
 
 test("amarillo: 3 de 4 en rango (1 fuera)", () => {
-  assert.strictEqual(S.clasificar({ ...limpia, turbidez: 6 }).estado, "amarillo");
+  assert.strictEqual(S.clasificar({ ...limpia, turbidez: 12 }).estado, "amarillo");
   assert.strictEqual(S.clasificar({ ...limpia, ph: 6.2 }).estado, "amarillo");
   assert.strictEqual(S.clasificar({ ...limpia, conductividad: 1800 }).estado, "amarillo");
-  assert.strictEqual(S.clasificar({ ...limpia, temperatura: 33 }).estado, "amarillo");
+  assert.strictEqual(S.clasificar({ ...limpia, temperatura: 42 }).estado, "amarillo");
 });
 
 test("amarillo: 2 de 4 en rango (2 fuera)", () => {
@@ -32,19 +42,19 @@ test("amarillo: 2 de 4 en rango (2 fuera)", () => {
 });
 
 test("rojo: 1 de 4 en rango (3 fuera)", () => {
-  const r = S.clasificar({ ph: 9.1, turbidez: 8, conductividad: 2000, temperatura: 22 });
+  const r = S.clasificar({ ph: 9.1, turbidez: 12, conductividad: 2000, temperatura: 22 });
   assert.strictEqual(r.enRango, 1);
   assert.strictEqual(r.estado, "rojo");
 });
 
 test("rojo: 0 de 4 en rango", () => {
-  const r = S.clasificar({ ph: 5, turbidez: 80, conductividad: 4000, temperatura: 40 });
+  const r = S.clasificar({ ph: 5, turbidez: 80, conductividad: 4000, temperatura: 46 });
   assert.strictEqual(r.enRango, 0);
   assert.strictEqual(r.estado, "rojo");
 });
 
 test("límites exactos cuentan como dentro de rango", () => {
-  assert.strictEqual(S.clasificar({ ph: 6.5, turbidez: 4, conductividad: 1500, temperatura: 30 }).estado, "verde");
+  assert.strictEqual(S.clasificar({ ph: 6.5, turbidez: 10, conductividad: 1500, temperatura: 40 }).estado, "verde");
   assert.strictEqual(S.clasificar({ ph: 8.5, turbidez: 0, conductividad: 50, temperatura: 10 }).estado, "verde");
 });
 
@@ -63,7 +73,7 @@ test("crítico solo pone rojo si la opción está activa", () => {
   const extrema = { ...limpia, ph: 3.5 };
   assert.strictEqual(S.clasificar(extrema).estado, "amarillo");
   assert.strictEqual(S.clasificar(extrema, S.UMBRALES_DEFECTO, { criticoRojo: true }).estado, "rojo");
-  const caliente = { ...limpia, temperatura: 38 };
+  const caliente = { ...limpia, temperatura: 46 };
   assert.strictEqual(S.clasificar(caliente, S.UMBRALES_DEFECTO, { criticoRojo: true }).estado, "rojo");
 });
 

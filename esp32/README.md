@@ -27,7 +27,7 @@
 | Conductividad | Keyestudio TDS V1 | µS/cm | Analógica | Lo tienen |
 | Temperatura | DS18B20 | °C | Digital 1-Wire | Lo tienen |
 | Nivel | HC-SR04T | cm (distancia a la superficie) | Digital (trigger + echo) | Lo tienen; solo sale en el monitor serie, no se guarda |
-| Turbidez | TSW-10 | NTU | Analógica | Falta comprarlo |
+| Turbidez | TSW-10 | % (0 = agua limpia, 0 a 100) | Analógica | Falta comprarlo |
 
 Para la PCB:
 

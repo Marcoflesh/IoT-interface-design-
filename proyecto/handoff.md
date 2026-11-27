@@ -182,6 +182,16 @@ Ninguna se manda por chat ni se sube a GitHub (`.env` y `secretos.h` están en `
 - Se quitó de la barra el texto de la fuente ("Fuente: ThingSpeak · canal …"); solo queda "Conectado/Sin conexión". El pie ya no menciona la NOM-127 ni que el rango de temperatura es propuesta del equipo (sigue en README y PUESTA_EN_MARCHA.md).
 - Sin cambios en lógica, fuentes, API ni Docker. Chrome escritorio y móvil sin errores de JS. Paleta: sigue teal en la página (el favicon es azul).
 
+## Turbidez en % y temperatura hasta 40 °C (2026-11-27)
+- Turbidez: unidad **%** (0 % = agua limpia). En rango 0 a 10 %, sin crítico mínimo, crítico arriba de 15 %. Escala de la tarjeta 0 a 30 %.
+- Temperatura: en rango 10 a 40 °C, crítico arriba de 45 °C (mínimo y crítico mínimo sin cambio: 10 y 5). Escala 0 a 50 °C.
+- Base: migración `007_turbidez_porcentaje.sql` → `turbidez DECIMAL(5,2)` con comentario en %; pone NULL a valores viejos > 100 (NTU, no convertibles). Temperatura no necesitó cambio (`DECIMAL(5,2)`).
+- API: `validar.js` acepta turbidez 0 a 100. Puente sin cambios (usa la misma validación).
+- Página: `semaforo.js` (umbrales y unidades), encabezado "Turbidez (%)". `app.js`: `VERSION_UMBRALES = 2`; navegadores con Ajustes guardados antes toman los nuevos límites de turbidez y temperatura y conservan los demás.
+- `ver-mariadb.sh/.ps1` (semáforo en SQL: turbidez ≤ 10, temperatura 10 a 40), `probar-thingspeak` en %, firmware (comentarios), esp32/README, README, PUESTA_EN_MARCHA y documento de contexto.
+- Verificado: semáforo 12/12, API 21/21 con MariaDB real (incluye migración 007 dos veces), migración con el cliente `mariadb`, `ver-mariadb.sh`, Chrome con Ajustes viejos.
+- En ThingSpeak conviene renombrar Field 2 a "Turbidez (%)" (solo es la etiqueta).
+
 ## Pendiente del equipo
 - Responder el banco de preguntas (divisores, fórmulas, pines) para el firmware real.
 - FEDORA.md Paso 10 (quitar el simulador) y luego conectar el ESP32 real con `esp32/README.md`.

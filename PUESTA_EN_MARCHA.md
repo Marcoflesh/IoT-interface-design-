@@ -95,7 +95,7 @@ En https://thingspeak.com → **Channels → My Channels →** tu canal nuevo �
 
 1. Activa y nombra los campos **en este orden** (el firmware y la página los usan así):
    - Field 1: `pH`
-   - Field 2: `Turbidez`
+   - Field 2: `Turbidez (%)`
    - Field 3: `Conductividad`
    - Field 4: `Temperatura`
 2. **Save Channel.**
@@ -264,12 +264,12 @@ En 1 o 2 minutos abre https://marcoflesh.github.io/IoT-interface-design-/. Si es
 
 Rangos por defecto (se cambian en **Ajustes → Umbrales del semáforo**):
 
-| Parámetro | En rango | Referencia |
-|---|---|---|
-| pH | 6.5 a 8.5 | NOM-127-SSA1-2021 |
-| Turbidez | 0 a 4 NTU | NOM-127-SSA1-2021 |
-| Conductividad | 50 a 1500 µS/cm | Límite de sólidos disueltos de la NOM-127, convertido |
-| Temperatura | 10 a 30 °C | Propuesta del equipo: la NOM-127 no fija temperatura. Ajústenla si su profesor da otro rango |
+| Parámetro | En rango | Crítico | Referencia |
+|---|---|---|---|
+| pH | 6.5 a 8.5 | menos de 6.0 o más de 9.0 | NOM-127-SSA1-2021 |
+| Turbidez | 0 a 10 % (0 % = agua limpia) | más de 15 % | Límite del equipo; el sensor mide en porcentaje |
+| Conductividad | 50 a 1500 µS/cm | más de 3000 µS/cm | Límite de sólidos disueltos de la NOM-127, convertido |
+| Temperatura | 10 a 40 °C | menos de 5 o más de 45 °C | Propuesta del equipo: la NOM-127 no fija temperatura |
 
 Mientras falte un sensor (por ejemplo, el TSW-10 de turbidez) el semáforo se queda en **gris**: no puede decir que el agua está bien sin medirla.
 
